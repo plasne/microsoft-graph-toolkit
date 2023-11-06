@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [4.0.0](https://github.com/microsoftgraph/microsoft-graph-toolkit/compare/v3.1.3...v4.0.0) (2023-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* applications which have previously requested presence.read.all and not presence.read will have a changed set of required scopes. This will require additional user consent or updating of pre-consented permissions when incremental consent is not enabled
+* default behavior of mgt-people-picker changes so presence is not shown unless show-presence attribute or showPresence property are set
+* applications importing from `@microsoft/mgt-react` will not have any components automatically registered in the browser. This leads to a breaking change when these applications emit raw web component markup rather than using the wrapper components
+
+### Features
+
+* add show-presence to mgt-people-picker ([#2812](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2812)) ([f5bf7cc](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/f5bf7cc86467de270b059e340c0cf0f4d29af8e4))
+* enable live code inclusion for consuming applications ([#2642](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2642)) ([c41d719](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/c41d7190f771513583deac46e5c57fdf17575d81))
+
+
+### Bug Fixes
+
+* correct filter concatenation in mgt-people-picker ([#2822](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2822)) ([18925a9](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/18925a9d80f07e0c27e1d3a715d8fc099bacbd2c))
+* enable the input control when selectedPeople is cleared via code. ([#2792](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2792)) ([f54dc81](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/f54dc81fea4d371e133d297e170bfc800f567981))
+* ensure people-filters are added with and clause for people-picker ([#2826](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2826)) ([0d671e6](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/0d671e6da32473c860daf9ff23a7ddfc43ae72e0))
+* flyout vertical positioning ([#2771](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2771)) ([45163ed](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/45163ed2dfe6260a220cd9cb7a6531958abc18fe))
+* getUserPresence should only request presence.read ([#2813](https://github.com/microsoftgraph/microsoft-graph-toolkit/issues/2813)) ([14e7a56](https://github.com/microsoftgraph/microsoft-graph-toolkit/commit/14e7a5687702de04e75fe45ff8fbf5d8ee4fe02b))
+
 ## [3.1.3](https://github.com/microsoftgraph/microsoft-graph-toolkit/compare/v3.1.2...v3.1.3) (2023-10-06)
 
 
