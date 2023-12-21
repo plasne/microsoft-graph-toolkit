@@ -149,8 +149,6 @@
     "shx": "^0.3.3",
     "sinon": "^16.1.0",
     "storybook": "^7.4.5",
-    "storybook-addon-web-components-knobs": "^0.3.20",
-    "storybook-version": "^0.1.1",
     "stylelint": "^15.6.1",
     "stylelint-config-prettier-scss": "^0.0.1",
     "stylelint-config-standard-scss": "^9.0.0",
