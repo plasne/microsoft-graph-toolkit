@@ -33275,7 +33275,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-dom@npm:^17.0.0, react-dom@npm:^17.0.1":
+"react-dom@npm:^17.0.0, react-dom@npm:^17.0.1, react-dom@npm:^17.0.2":
   version: 17.0.2
   resolution: "react-dom@npm:17.0.2"
   dependencies:
@@ -33546,6 +33546,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"react-tests@workspace:samples/react-tests":
+  version: 0.0.0-use.local
+  resolution: "react-tests@workspace:samples/react-tests"
+  dependencies:
+    "@playwright/experimental-ct-react17": ^1.40.1
+    "@types/node": 12.12.22
+    react: ^17.0.2
+    react-dom: ^17.0.2
+  languageName: unknown
+  linkType: soft
+
 "react-transition-group@npm:^4.3.0, react-transition-group@npm:^4.4.1":
   version: 4.4.5
   resolution: "react-transition-group@npm:4.4.5"
@@ -33570,7 +33581,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:^17.0.0, react@npm:^17.0.1":
+"react@npm:^17.0.0, react@npm:^17.0.1, react@npm:^17.0.2":
   version: 17.0.2
   resolution: "react@npm:17.0.2"
   dependencies:
@@ -34857,7 +34868,6 @@ __metadata:
     "@octokit/rest": ^18.5.3
     "@open-wc/testing": ^3.2.0
     "@open-wc/testing-helpers": ^2.3.0
-    "@playwright/experimental-ct-react17": ^1.40.1
     "@storybook/addon-a11y": ^7.4.5
     "@storybook/addon-actions": ^7.4.5
     "@storybook/addon-docs": ^7.4.5

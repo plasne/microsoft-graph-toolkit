@@ -1,0 +1,16 @@
+{
+  "name": "react-tests",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "test-ct": "playwright test -c playwright-ct.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/experimental-ct-react17": "^1.40.1",
+    "@types/node": "12.12.22"
+  },
+  "dependencies": {
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  }
+}

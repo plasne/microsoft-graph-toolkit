@@ -1,5 +1,5 @@
 {
-  "packages": ["packages/*", "packages/providers/*", "samples/react-contoso", "samples/react-chat"],
+  "packages": ["packages/*", "packages/providers/*", "samples/react-contoso", "samples/react-chat", "samples/react-tests"],
   "npmClient": "yarn",
   "version": "independent"
 }
