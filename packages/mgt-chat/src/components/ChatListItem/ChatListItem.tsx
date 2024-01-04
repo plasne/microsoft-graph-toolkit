@@ -4,6 +4,7 @@ import { Chat, AadUserConversationMember, NullableOption, ChatMessageInfo } from
 import { Person, PersonCardInteraction } from '@microsoft/mgt-react';
 import { error } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
+import { rewriteEmojiContent } from '../../utils/rewriteEmojiContent';
 
 export interface IChatListItemInteractionProps {
   onSelected: (e: Chat) => void;
@@ -208,22 +209,29 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
   const enrichPreviewMessage = (previewMessage: NullableOption<ChatMessageInfo> | undefined) => {
     let previewString = '';
+    let content = previewMessage?.body?.content as string;
+
+    // handle emojis
+    content = rewriteEmojiContent(content);
 
     // handle general chats from people and bots
     if (previewMessage?.from?.user?.id === myId) {
-      previewString = 'You: ' + previewMessage?.body?.content;
+      previewString = 'You: ' + content;
     } else if (previewMessage?.from?.user?.displayName) {
-      previewString = previewMessage?.from?.user?.displayName + ': ' + previewMessage?.body?.content;
+      previewString = previewMessage?.from?.user?.displayName + ': ' + content;
     } else if (previewMessage?.from?.application?.displayName) {
-      previewString = previewMessage?.from?.application?.displayName + ': ' + previewMessage?.body?.content;
+      previewString = previewMessage?.from?.application?.displayName + ': ' + content;
     }
 
     // handle all events
     if (previewMessage?.eventDetail) {
-      previewString = previewMessage?.body?.content as string;
+      previewString = content as string;
     }
 
-    return removeHtmlPTags(previewString);
+    // removes <p> tags from the string
+    previewString = removeHtmlPTags(previewString);
+
+    return previewString;
   };
 
   return (
