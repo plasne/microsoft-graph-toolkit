@@ -83,6 +83,11 @@ const useStyles = makeStyles({
   }
 });
 
+/**
+ * Regex to detect and replace image urls using graph requests to supply the image content
+ */
+const graphImageUrlRegex = /(<img[^>]+)src=(["']https:\/\/graph\.microsoft\.com[^"']*["'])/;
+
 export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps & IChatListItemInteractionProps) => {
   const styles = useStyles();
 
@@ -218,8 +223,6 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     content = rewriteEmojiContent(content);
 
     // handle images
-    const graphImageUrlRegex = /<img[^>]+?src=["']https:\/\/graph\.microsoft\.com\/[^"'>]+?["']/;
-
     const imageMatch = content.match(graphImageUrlRegex);
     if (imageMatch) {
       content = 'Sent an image.';
