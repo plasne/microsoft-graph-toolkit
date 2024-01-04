@@ -218,7 +218,7 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     content = rewriteEmojiContent(content);
 
     // handle images
-    const graphImageUrlRegex = /<img[^>]+src=["']https:\/\/graph\.microsoft\.com[^"']*["']/;
+    const graphImageUrlRegex = /<img[^>]+?src=["']https:\/\/graph\.microsoft\.com\/[^"'>]+?["']/;
 
     const imageMatch = content.match(graphImageUrlRegex);
     if (imageMatch) {
