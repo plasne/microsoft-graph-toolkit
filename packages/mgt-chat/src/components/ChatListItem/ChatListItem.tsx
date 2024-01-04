@@ -7,6 +7,7 @@ import {
   NullableOption,
   ChatMessageInfo
 } from '@microsoft/microsoft-graph-types';
+import { Person, PersonCardInteraction, Spinner } from '@microsoft/mgt-react';
 import { error } from '@microsoft/mgt-element';
 import { Providers, ProviderState } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
@@ -81,6 +82,10 @@ const useStyles = makeStyles({
     paddingLeft: '10px',
     fontSize: '0.8em',
     color: '#999'
+  },
+  person: {
+    '--person-avatar-size': '32px',
+    '--person-alignment': 'center'
   }
 });
 
@@ -134,15 +139,15 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
   // Chooses the correct timestamp to display
   const determineCorrectTimestamp = (chat: Chat) => {
-    let timestamp: Date | undefined = undefined;
+    let timestamp: Date | undefined;
 
     // lastMessageTime is the time of the last message sent in the chat
     // lastUpdatedTime is Date and time at which the chat was renamed or list of members were last changed.
-    let lastMessageTimeString = chat.lastMessagePreview?.createdDateTime as string;
-    let lastUpdatedTimeString = chat.lastUpdatedDateTime as string;
+    const lastMessageTimeString = chat.lastMessagePreview?.createdDateTime as string;
+    const lastUpdatedTimeString = chat.lastUpdatedDateTime as string;
 
-    let lastMessageTime = new Date(lastMessageTimeString);
-    let lastUpdatedTime = new Date(lastUpdatedTimeString);
+    const lastMessageTime = new Date(lastMessageTimeString);
+    const lastUpdatedTime = new Date(lastUpdatedTimeString);
 
     if (lastMessageTime && lastUpdatedTime) {
       timestamp = new Date(Math.max(lastMessageTime.getTime(), lastUpdatedTime.getTime()));
@@ -155,14 +160,27 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     return String(timestamp);
   };
 
-  const getDefaultProfileImage = () => {
+  const getDefaultProfileImage = (chatObj: Chat) => {
     // define the JSX for FluentUI Icons + Styling
     const oneOnOneProfilePicture = <ChatListItemIcon chatType="oneOnOne" />;
     const GroupProfilePicture = <ChatListItemIcon chatType="group" />;
 
     switch (true) {
       case chat.chatType === 'oneOnOne':
-        return oneOnOneProfilePicture;
+        const other = chatObj.members?.find(m => (m as AadUserConversationMember).userId !== myId);
+        const otherAad = other as AadUserConversationMember;
+        if (!otherAad) {
+          return oneOnOneProfilePicture;
+        }
+        return (
+          <Person
+            className={styles.person}
+            userId={otherAad?.userId!}
+            avatarSize="small"
+            showPresence={true}
+            personCardInteraction={PersonCardInteraction.hover}
+          />
+        );
       case chat.chatType === 'group':
         return GroupProfilePicture;
       default:
@@ -202,7 +220,7 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
         onSelected(chat);
       }}
     >
-      <div className={styles.profileImage}>{getDefaultProfileImage()}</div>
+      <div className={styles.profileImage}>{getDefaultProfileImage(chat)}</div>
       <div className={styles.chatInfo}>
         <h3 className={styles.chatTitle}>{inferTitle(chat)}</h3>
         <p className={styles.chatMessage}>{enrichPreviewMessage(chat.lastMessagePreview)}</p>
