@@ -1,15 +1,8 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { makeStyles, shorthands, Button } from '@fluentui/react-components';
-import {
-  Chat,
-  AadUserConversationMember,
-  MembersAddedEventMessageDetail,
-  NullableOption,
-  ChatMessageInfo
-} from '@microsoft/microsoft-graph-types';
-import { Person, PersonCardInteraction, Spinner } from '@microsoft/mgt-react';
+import { Chat, AadUserConversationMember, NullableOption, ChatMessageInfo } from '@microsoft/microsoft-graph-types';
+import { Person, PersonCardInteraction } from '@microsoft/mgt-react';
 import { error } from '@microsoft/mgt-element';
-import { Providers, ProviderState } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
 
 export interface IChatListItemInteractionProps {
@@ -138,16 +131,13 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
   };
 
   // Chooses the correct timestamp to display
-  const determineCorrectTimestamp = (chat: Chat) => {
+  const determineCorrectTimestamp = (chatObj: Chat) => {
     let timestamp: Date | undefined;
 
     // lastMessageTime is the time of the last message sent in the chat
     // lastUpdatedTime is Date and time at which the chat was renamed or list of members were last changed.
-    const lastMessageTimeString = chat.lastMessagePreview?.createdDateTime as string;
-    const lastUpdatedTimeString = chat.lastUpdatedDateTime as string;
-
-    const lastMessageTime = new Date(lastMessageTimeString);
-    const lastUpdatedTime = new Date(lastUpdatedTimeString);
+    const lastMessageTime = new Date(chatObj.lastMessagePreview?.createdDateTime as string);
+    const lastUpdatedTime = new Date(chatObj.lastUpdatedDateTime as string);
 
     if (lastMessageTime && lastUpdatedTime) {
       timestamp = new Date(Math.max(lastMessageTime.getTime(), lastUpdatedTime.getTime()));
@@ -165,17 +155,20 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     const oneOnOneProfilePicture = <ChatListItemIcon chatType="oneOnOne" />;
     const GroupProfilePicture = <ChatListItemIcon chatType="group" />;
 
+    const other = chatObj.members?.find(m => (m as AadUserConversationMember).userId !== myId);
+    const otherAad = other as AadUserConversationMember;
+    let iconId: string | undefined;
     switch (true) {
       case chat.chatType === 'oneOnOne':
-        const other = chatObj.members?.find(m => (m as AadUserConversationMember).userId !== myId);
-        const otherAad = other as AadUserConversationMember;
         if (!otherAad) {
-          return oneOnOneProfilePicture;
+          iconId = myId;
+        } else {
+          iconId = otherAad?.userId as string;
         }
         return (
           <Person
             className={styles.person}
-            userId={otherAad?.userId!}
+            userId={iconId}
             avatarSize="small"
             showPresence={true}
             personCardInteraction={PersonCardInteraction.hover}
