@@ -214,6 +214,13 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     // handle emojis
     content = rewriteEmojiContent(content);
 
+    // handle images
+    const graphImageUrlRegex = /(<img[^>]+)src=(["']https:\/\/graph\.microsoft\.com[^"']*["'])/;
+    const imageMatch = content.match(graphImageUrlRegex);
+    if (imageMatch) {
+      content = 'Sent an image.';
+    }
+
     // handle general chats from people and bots
     if (previewMessage?.from?.user?.id === myId) {
       previewString = 'You: ' + content;
