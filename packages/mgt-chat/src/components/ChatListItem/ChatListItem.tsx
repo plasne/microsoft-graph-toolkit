@@ -100,6 +100,26 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
         ? `${other?.displayName || (other as AadUserConversationMember)?.email || other?.id}`
         : `${me?.displayName} (You)`;
     }
+    if (chatObj.chatType === 'group' && chatObj.members) {
+      const others = chatObj.members.filter(m => (m as AadUserConversationMember).userId !== myId);
+      // if there are 3 or less members, display all members' first names
+      if (chatObj.members.length <= 3) {
+        return (
+          chatObj.topic ||
+          others.map(m => (m as AadUserConversationMember).displayName?.split(' ')[0]).join(', ') ||
+          chatObj.chatType
+        );
+        // if there are more than 3 members, display the first 3 members' first names and a count of the remaining members
+      } else if (chatObj.members.length > 3) {
+        let firstThreeMembersSlice = others.slice(0, 3);
+        let remainingMembersCount = chatObj.members.length - 3;
+        let groupMembersString =
+          firstThreeMembersSlice.map(m => (m as AadUserConversationMember).displayName?.split(' ')[0]).join(', ') +
+          ' +' +
+          remainingMembersCount;
+        return chatObj.topic || groupMembersString || chatObj.chatType;
+      }
+    }
     return chatObj.topic || chatObj.chatType;
   };
 
