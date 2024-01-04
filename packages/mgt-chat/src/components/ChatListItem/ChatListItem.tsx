@@ -206,6 +206,9 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
   const removeHtmlPTags = (str: string) => {
     return str.replace(/<\/?p>/g, '');
   };
+  const removeHtmlATags = (str: string) => {
+    return str.replace(/<\/?a[^>]*>/g, '');
+  };
 
   const enrichPreviewMessage = (previewMessage: NullableOption<ChatMessageInfo> | undefined) => {
     let previewString = '';
@@ -215,7 +218,8 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     content = rewriteEmojiContent(content);
 
     // handle images
-    const graphImageUrlRegex = /(<img[^>]+)src=(["']https:\/\/graph\.microsoft\.com[^"']*["'])/;
+    const graphImageUrlRegex = /<img[^>]+src=["']https:\/\/graph\.microsoft\.com[^"']*["']/;
+
     const imageMatch = content.match(graphImageUrlRegex);
     if (imageMatch) {
       content = 'Sent an image.';
@@ -237,6 +241,8 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
     // removes <p> tags from the string
     previewString = removeHtmlPTags(previewString);
+    // removes <a> tags from the string
+    previewString = removeHtmlATags(previewString);
 
     return previewString;
   };
