@@ -1,10 +1,17 @@
 import React from 'react';
 import { makeStyles, shorthands, Button } from '@fluentui/react-components';
-import { Chat, AadUserConversationMember, NullableOption, ChatMessageInfo } from '@microsoft/microsoft-graph-types';
-import { Person, PersonCardInteraction } from '@microsoft/mgt-react';
+import {
+  Chat,
+  AadUserConversationMember,
+  NullableOption,
+  ChatMessageInfo,
+  TeamworkApplicationIdentity
+} from '@microsoft/microsoft-graph-types';
+import { MgtTemplateProps, Person, PersonCardInteraction, PersonProps } from '@microsoft/mgt-react';
 import { error } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
 import { rewriteEmojiContent } from '../../utils/rewriteEmojiContent';
+import { convert } from 'html-to-text';
 
 export interface IChatListItemInteractionProps {
   onSelected: (e: Chat) => void;
@@ -29,8 +36,14 @@ const useStyles = makeStyles({
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: 'auto',
-    ...shorthands.borderRadius('50%'), // This will make it round
     marginRight: '10px',
+    objectFit: 'cover', // This ensures the image covers the area without stretching
+    display: 'flex',
+    alignItems: 'center', // This will vertically center the image
+    justifyContent: 'center' // This will horizontally center the image
+  },
+  defaultProfileImage: {
+    ...shorthands.borderRadius('50%'),
     objectFit: 'cover', // This ensures the image covers the area without stretching
     display: 'flex',
     alignItems: 'center', // This will vertically center the image
@@ -64,7 +77,6 @@ const useStyles = makeStyles({
     textOverflow: 'ellipsis',
     ...shorthands.overflow('hidden'),
     whiteSpace: 'nowrap',
-    // maxWidth: '300px',
     width: 'auto'
   },
   chatTimestamp: {
@@ -86,7 +98,7 @@ const useStyles = makeStyles({
 /**
  * Regex to detect and replace image urls using graph requests to supply the image content
  */
-const graphImageUrlRegex = /(<img[^>]+)src=(["']https:\/\/graph\.microsoft\.com[^"']*["'])/;
+const graphImageUrlRegex = /(<img[^>]+)/;
 
 export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps & IChatListItemInteractionProps) => {
   const styles = useStyles();
@@ -98,13 +110,18 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
   // Copied and modified from the sample ChatItem.tsx
   // Determines the title in the case of 1:1 and self chats
+  // Self Chats are not possible, however, 1:1 chats with a bot will show no other members other than self.
   const inferTitle = (chatObj: Chat) => {
     if (myId && chatObj.chatType === 'oneOnOne' && chatObj.members) {
       const other = chatObj.members.find(m => (m as AadUserConversationMember).userId !== myId);
       const me = chatObj.members.find(m => (m as AadUserConversationMember).userId === myId);
-      return other
-        ? `${other?.displayName || (other as AadUserConversationMember)?.email || other?.id}`
-        : `${me?.displayName} (You)`;
+      const application = chatObj.lastMessagePreview?.from?.application as TeamworkApplicationIdentity;
+      // if there is no other member, return the application display name
+      if (other) {
+        return `${other?.displayName || (other as AadUserConversationMember)?.email || other?.id}`;
+      } else if (application && me) {
+        return `${application?.displayName}` || `${application?.id}`;
+      }
     }
     if (chatObj.chatType === 'group' && chatObj.members) {
       const others = chatObj.members.filter(m => (m as AadUserConversationMember).userId !== myId);
@@ -183,14 +200,18 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
     const other = chatObj.members?.find(m => (m as AadUserConversationMember).userId !== myId);
     const otherAad = other as AadUserConversationMember;
+    const application = chatObj.lastMessagePreview?.from?.application as TeamworkApplicationIdentity;
     let iconId: string | undefined;
     switch (true) {
       case chat.chatType === 'oneOnOne':
-        if (!otherAad) {
-          iconId = myId;
+        if (!otherAad && application.id) {
+          iconId = application.id;
         } else {
           iconId = otherAad?.userId as string;
         }
+        const Default = (props: MgtTemplateProps) => {
+          return <div className={styles.defaultProfileImage}>{oneOnOneProfilePicture}</div>;
+        };
         return (
           <Person
             className={styles.person}
@@ -198,7 +219,9 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
             avatarSize="small"
             showPresence={true}
             personCardInteraction={PersonCardInteraction.hover}
-          />
+          >
+            <Default template="no-data" />
+          </Person>
         );
       case chat.chatType === 'group':
         return GroupProfilePicture;
@@ -208,16 +231,14 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     }
   };
 
-  const removeHtmlPTags = (str: string) => {
-    return str.replace(/<\/?p>/g, '');
-  };
-  const removeHtmlATags = (str: string) => {
-    return str.replace(/<\/?a[^>]*>/g, '');
-  };
-
   const enrichPreviewMessage = (previewMessage: NullableOption<ChatMessageInfo> | undefined) => {
     let previewString = '';
     let content = previewMessage?.body?.content as string;
+
+    // handle null or undefined content
+    if (!content) {
+      return previewString;
+    }
 
     // handle emojis
     content = rewriteEmojiContent(content);
@@ -227,6 +248,9 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     if (imageMatch) {
       content = 'Sent an image.';
     }
+
+    // convert html to text
+    content = convert(content);
 
     // handle general chats from people and bots
     if (previewMessage?.from?.user?.id === myId) {
@@ -241,11 +265,6 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     if (previewMessage?.eventDetail) {
       previewString = content as string;
     }
-
-    // removes <p> tags from the string
-    previewString = removeHtmlPTags(previewString);
-    // removes <a> tags from the string
-    previewString = removeHtmlATags(previewString);
 
     return previewString;
   };
