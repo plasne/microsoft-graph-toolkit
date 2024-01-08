@@ -27,7 +27,6 @@ const useStyles = makeStyles({
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between', // Add this if you want to push the timestamp to the end
     width: '100%',
     ...shorthands.padding('10px'),
     ...shorthands.borderBottom('1px solid #ccc')
@@ -51,11 +50,9 @@ const useStyles = makeStyles({
   },
   chatInfo: {
     flexGrow: 1,
-    flexShrink: 2,
+    flexShrink: 1,
     flexBasis: 'auto',
     minWidth: 0,
-    alignSelf: 'left',
-    alignItems: 'center',
     ...shorthands.padding('5px')
   },
   chatTitle: {
@@ -66,7 +63,6 @@ const useStyles = makeStyles({
     textOverflow: 'ellipsis',
     ...shorthands.overflow('hidden'),
     whiteSpace: 'nowrap',
-    maxWidth: '300px',
     width: 'auto'
   },
   chatMessage: {
@@ -87,7 +83,8 @@ const useStyles = makeStyles({
     marginLeft: 'auto',
     paddingLeft: '10px',
     fontSize: '0.8em',
-    color: '#999'
+    color: '#999',
+    whiteSpace: 'nowrap'
   },
   person: {
     '--person-avatar-size': '32px',
