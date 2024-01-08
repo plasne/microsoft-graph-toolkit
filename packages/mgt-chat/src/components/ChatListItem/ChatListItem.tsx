@@ -204,7 +204,7 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     let iconId: string | undefined;
     switch (true) {
       case chat.chatType === 'oneOnOne':
-        if (!otherAad && application.id) {
+        if (!otherAad && application?.id) {
           iconId = application.id;
         } else {
           iconId = otherAad?.userId as string;
