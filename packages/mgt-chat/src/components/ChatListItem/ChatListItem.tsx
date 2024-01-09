@@ -234,6 +234,13 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
 
     // handle null or undefined content
     if (!content) {
+      if (previewMessage?.from?.user?.id === myId) {
+        previewString = 'You: Sent a message';
+      } else if (previewMessage?.from?.user?.displayName) {
+        previewString = previewMessage?.from?.user?.displayName + ': Sent a message';
+      } else if (previewMessage?.from?.application?.displayName) {
+        previewString = previewMessage?.from?.application?.displayName + ': Sent a message';
+      }
       return previewString;
     }
 
@@ -243,7 +250,7 @@ export const ChatListItem = ({ chat, myId, onSelected }: IMgtChatListItemProps &
     // handle images
     const imageMatch = content.match(graphImageUrlRegex);
     if (imageMatch) {
-      content = 'Sent an image.';
+      content = 'Sent an image';
     }
 
     // convert html to text
