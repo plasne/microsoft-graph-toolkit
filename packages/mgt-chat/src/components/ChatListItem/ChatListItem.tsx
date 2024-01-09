@@ -111,9 +111,7 @@ const useStyles = makeStyles({
   }
 });
 
-/**
- * Regex to detect and replace image urls using graph requests to supply the image content
- */
+// Regex to detect and replace image urls using graph requests to supply the image content
 const graphImageUrlRegex = /(<img[^>]+)/;
 
 export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListItemProps) => {
@@ -121,13 +119,12 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
 
   // manage the internal state of the chat
   const [chatInternal, setChatInternal] = useState(chat);
+  const [read, setRead] = useState<boolean>(isRead);
 
   // shortcut if no valid user
   if (!myId) {
     return <></>;
   }
-
-  const [read, setRead] = useState<boolean>(isRead);
 
   // when isSelected changes to true, setRead to true
   useEffect(() => {
@@ -135,6 +132,28 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
       setRead(true);
     }
   }, [isSelected]);
+
+  // if chat changes, update the internal state to match
+  useEffect(() => {
+    setChatInternal(chat);
+  }, [chat]);
+
+  // enrich the chat if necessary
+  useEffect(() => {
+    if (chatInternal.id && (!chatInternal.chatType || !chatInternal.members)) {
+      const provider = Providers.globalProvider;
+      if (provider && provider.state === ProviderState.SignedIn) {
+        const graph = provider.graph.forComponent('ChatListItem');
+        const load = (id: string): Promise<Chat> => {
+          return loadChatWithPreview(graph, id);
+        };
+        load(chatInternal.id).then(
+          c => setChatInternal(c),
+          e => error(e)
+        );
+      }
+    }
+  }, [chatInternal]);
 
   // Copied and modified from the sample ChatItem.tsx
   // Determines the title in the case of 1:1 and self chats
@@ -225,14 +244,14 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
     return timestamp;
   };
 
-  const getDefaultProfileImage = (chatObj: Chat) => {
+  const getDefaultProfileImage = (chat: Chat) => {
     // define the JSX for FluentUI Icons + Styling
     const oneOnOneProfilePicture = <ChatListItemIcon chatType="oneOnOne" />;
     const GroupProfilePicture = <ChatListItemIcon chatType="group" />;
 
-    const other = chatObj.members?.find(m => (m as AadUserConversationMember).userId !== myId);
+    const other = chat.members?.find(m => (m as AadUserConversationMember).userId !== myId);
     const otherAad = other as AadUserConversationMember;
-    const application = chatObj.lastMessagePreview?.from?.application as TeamworkApplicationIdentity;
+    const application = chat.lastMessagePreview?.from?.application as TeamworkApplicationIdentity;
     let iconId: string | undefined;
     switch (true) {
       case chat.chatType === 'oneOnOne':
@@ -307,28 +326,6 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
     return previewString;
   };
 
-  // if chat changes, update the internal state to match
-  useEffect(() => {
-    setChatInternal(chat);
-  }, [chat]);
-
-  // enrich the chat if necessary
-  useEffect(() => {
-    if (chatInternal.id && (!chatInternal.chatType || !chatInternal.members)) {
-      const provider = Providers.globalProvider;
-      if (provider && provider.state === ProviderState.SignedIn) {
-        const graph = provider.graph.forComponent('ChatListItem');
-        const load = (id: string): Promise<Chat> => {
-          return loadChatWithPreview(graph, id);
-        };
-        load(chatInternal.id).then(
-          c => setChatInternal(c),
-          e => error(e)
-        );
-      }
-    }
-  }, [chatInternal]);
-
   const container = mergeClasses(
     styles.chatListItem,
     isSelected ? styles.isSelected : styles.isUnSelected,
@@ -337,7 +334,7 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
 
   return (
     <div className={container}>
-      <div className={styles.profileImage}>{getDefaultProfileImage(chat)}</div>
+      <div className={styles.profileImage}>{getDefaultProfileImage(chatInternal)}</div>
       <div className={styles.chatInfo}>
         <p className={styles.chatTitle}>{inferTitle(chatInternal)}</p>
         <p className={styles.chatMessage}>{enrichPreviewMessage(chatInternal.lastMessagePreview)}</p>
