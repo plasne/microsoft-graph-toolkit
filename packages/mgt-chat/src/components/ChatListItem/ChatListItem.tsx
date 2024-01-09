@@ -7,11 +7,12 @@ import {
   ChatMessageInfo,
   TeamworkApplicationIdentity
 } from '@microsoft/microsoft-graph-types';
-import { MgtTemplateProps, Person, PersonCardInteraction, PersonProps } from '@microsoft/mgt-react';
-import { error } from '@microsoft/mgt-element';
+import { MgtTemplateProps, Person, PersonCardInteraction } from '@microsoft/mgt-react';
+import { ProviderState, Providers, error } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
 import { rewriteEmojiContent } from '../../utils/rewriteEmojiContent';
 import { convert } from 'html-to-text';
+import { loadChatWithPreview } from '../../statefulClient/graph.chat';
 
 interface IMgtChatListItemProps {
   chat: Chat;
@@ -118,6 +119,9 @@ const graphImageUrlRegex = /(<img[^>]+)/;
 export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListItemProps) => {
   const styles = useStyles();
 
+  // manage the internal state of the chat
+  const [chatInternal, setChatInternal] = useState(chat);
+
   // shortcut if no valid user
   if (!myId) {
     return <></>;
@@ -167,12 +171,12 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
         return chatObj.topic || groupMembersString || chatObj.chatType;
       }
     }
-    return chatObj.topic || chatObj.chatType;
+    return chatObj.topic || chatObj.id;
   };
 
   // Derives the timestamp to display
-  const extractTimestamp = (timestamp: NullableOption<string> | undefined): string => {
-    if (timestamp === undefined || timestamp === null) return '';
+  const extractTimestamp = (timestamp: NullableOption<string>): string => {
+    if (!timestamp) return '';
     const currentDate = new Date();
     const date = new Date(timestamp);
 
@@ -198,23 +202,27 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   };
 
   // Chooses the correct timestamp to display
-  const determineCorrectTimestamp = (chatObj: Chat) => {
-    let timestamp: Date | undefined;
+  const determineCorrectTimestamp = (chat: Chat) => {
+    let timestamp: NullableOption<string>;
 
     // lastMessageTime is the time of the last message sent in the chat
     // lastUpdatedTime is Date and time at which the chat was renamed or list of members were last changed.
-    const lastMessageTime = new Date(chatObj.lastMessagePreview?.createdDateTime as string);
-    const lastUpdatedTime = new Date(chatObj.lastUpdatedDateTime as string);
+    const lastMessageTime = new Date(chat.lastMessagePreview?.createdDateTime as string);
+    const lastUpdatedTime = new Date(chat.lastUpdatedDateTime as string);
 
-    if (lastMessageTime && lastUpdatedTime) {
-      timestamp = new Date(Math.max(lastMessageTime.getTime(), lastUpdatedTime.getTime()));
+    if (lastMessageTime > lastUpdatedTime) {
+      timestamp = String(lastMessageTime);
+    } else if (lastUpdatedTime > lastMessageTime) {
+      timestamp = String(lastUpdatedTime);
     } else if (lastMessageTime) {
-      timestamp = lastMessageTime;
+      timestamp = String(lastMessageTime);
     } else if (lastUpdatedTime) {
-      timestamp = lastUpdatedTime;
+      timestamp = String(lastUpdatedTime);
+    } else {
+      timestamp = null;
     }
 
-    return String(timestamp);
+    return timestamp;
   };
 
   const getDefaultProfileImage = (chatObj: Chat) => {
@@ -250,7 +258,6 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
       case chat.chatType === 'group':
         return GroupProfilePicture;
       default:
-        error(`Error: Unexpected chatType: ${chat.chatType}`);
         return oneOnOneProfilePicture;
     }
   };
@@ -300,6 +307,28 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
     return previewString;
   };
 
+  // if chat changes, update the internal state to match
+  useEffect(() => {
+    setChatInternal(chat);
+  }, [chat]);
+
+  // enrich the chat if necessary
+  useEffect(() => {
+    if (chatInternal.id && (!chatInternal.chatType || !chatInternal.members)) {
+      const provider = Providers.globalProvider;
+      if (provider && provider.state === ProviderState.SignedIn) {
+        const graph = provider.graph.forComponent('ChatListItem');
+        const load = (id: string): Promise<Chat> => {
+          return loadChatWithPreview(graph, id);
+        };
+        load(chatInternal.id).then(
+          c => setChatInternal(c),
+          e => error(e)
+        );
+      }
+    }
+  }, [chatInternal]);
+
   const container = mergeClasses(
     styles.chatListItem,
     isSelected ? styles.isSelected : styles.isUnSelected,
@@ -310,10 +339,10 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
     <div className={container}>
       <div className={styles.profileImage}>{getDefaultProfileImage(chat)}</div>
       <div className={styles.chatInfo}>
-        <p className={styles.chatTitle}>{inferTitle(chat)}</p>
-        <p className={styles.chatMessage}>{enrichPreviewMessage(chat.lastMessagePreview)}</p>
+        <p className={styles.chatTitle}>{inferTitle(chatInternal)}</p>
+        <p className={styles.chatMessage}>{enrichPreviewMessage(chatInternal.lastMessagePreview)}</p>
       </div>
-      <div className={styles.chatTimestamp}>{extractTimestamp(determineCorrectTimestamp(chat))}</div>
+      <div className={styles.chatTimestamp}>{extractTimestamp(determineCorrectTimestamp(chatInternal))}</div>
     </div>
   );
 };
