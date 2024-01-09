@@ -31,30 +31,31 @@ const useStyles = makeStyles({
     ...shorthands.padding('10px'),
     ...shorthands.borderBottom('1px solid #ccc')
   },
+
   profileImage: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 'auto',
+    ...shorthands.flex('0 0 auto'),
     marginRight: '10px',
-    objectFit: 'cover', // This ensures the image covers the area without stretching
+    objectFit: 'cover',
     display: 'flex',
-    alignItems: 'center', // This will vertically center the image
-    justifyContent: 'center' // This will horizontally center the image
+    alignItems: 'center',
+    justifyContent: 'center'
   },
+
   defaultProfileImage: {
     ...shorthands.borderRadius('50%'),
-    objectFit: 'cover', // This ensures the image covers the area without stretching
+    objectFit: 'cover',
     display: 'flex',
-    alignItems: 'center', // This will vertically center the image
-    justifyContent: 'center' // This will horizontally center the image
+    alignItems: 'center',
+    justifyContent: 'center'
   },
+
   chatInfo: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 'auto',
     minWidth: 0,
     ...shorthands.padding('5px')
   },
+
   chatTitle: {
     textAlign: 'left',
     ...shorthands.margin('0'),
@@ -65,19 +66,20 @@ const useStyles = makeStyles({
     whiteSpace: 'nowrap',
     width: 'auto'
   },
+
   chatMessage: {
-    textAlign: 'left',
-    ...shorthands.margin('0'),
     fontSize: '0.9em',
     color: '#666',
+    textAlign: 'left',
+    ...shorthands.margin('0'),
     textOverflow: 'ellipsis',
     ...shorthands.overflow('hidden'),
     whiteSpace: 'nowrap',
     width: 'auto'
   },
+
   chatTimestamp: {
     flexShrink: 0,
-    flexBasis: 'auto',
     textAlign: 'right',
     alignSelf: 'start',
     marginLeft: 'auto',
@@ -86,6 +88,7 @@ const useStyles = makeStyles({
     color: '#999',
     whiteSpace: 'nowrap'
   },
+
   person: {
     '--person-avatar-size': '32px',
     '--person-alignment': 'center'
