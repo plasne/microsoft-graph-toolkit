@@ -40,7 +40,8 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    ...shorthands.padding('0px')
+    ...shorthands.padding('0px'),
+    ...shorthands.border('none')
   }
 });
 

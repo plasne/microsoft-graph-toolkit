@@ -43,8 +43,8 @@ const useStyles = makeStyles({
     display: 'flex',
     alignItems: 'center',
     width: '100%',
-    ...shorthands.padding('10px'),
-    ...shorthands.borderBottom('1px solid #ccc')
+    paddingRight: '10px',
+    paddingLeft: '10px'
   },
 
   profileImage: {
