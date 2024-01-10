@@ -47,10 +47,11 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
     | 'loading messages'
     | 'no session id'
     | 'no messages'
+    | 'chat threads loaded'
     | 'ready'
     | 'error';
   chatThreads: GraphChat[];
-  nextLink: string;
+  moreChatThreadsToLoad: boolean | undefined;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
 interface StatefulClient<T> {
@@ -140,16 +141,34 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
    */
   public loadMoreChatThreads(): void {
     const state = this.getState();
+    const items: GraphChat[] = [];
+    this.loadAndAppendChatThreads('', items, state.chatThreads.length + this.chatThreadsPerPage);
+  }
 
-    if (state.nextLink === '') {
-      return;
+  private loadAndAppendChatThreads(nextLink: string, items: GraphChat[], maxItems: number): void {
+    const handler = (latestChatThreads: ChatThreadCollection) => {
+      items = items.concat(latestChatThreads.value);
+
+      const handlerNextLink = latestChatThreads['@odata.nextLink'];
+      if (items.length >= maxItems) {
+        this.handleChatThreads(items, handlerNextLink);
+        return;
+      }
+
+      if (handlerNextLink && handlerNextLink !== '') {
+        this.loadAndAppendChatThreads(handlerNextLink, items, maxItems);
+      } else {
+        this.handleChatThreads(items, handlerNextLink);
+        return;
+      }
+    };
+
+    if (nextLink === '') {
+      loadChatThreads(this._graph, this.chatThreadsPerPage).then(handler, err => error(err));
+    } else {
+      const filter = nextLink.split('?')[1];
+      loadChatThreadsByPage(this._graph, filter).then(handler, err => error(err));
     }
-
-    const filter = state.nextLink.split('?')[1];
-    void loadChatThreadsByPage(this._graph, filter).then(
-      chats => this.handleChatThreads(chats),
-      e => error(e)
-    );
   }
 
   /**
@@ -182,7 +201,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     activeErrorMessages: [],
     userId: '',
     chatThreads: [],
-    nextLink: ''
+    moreChatThreadsToLoad: undefined
   };
 
   /**
@@ -293,18 +312,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   /*
    * Event handler to be called when we need to load more chat threads.
    */
-  private readonly handleChatThreads = (chatThreadCollection: ChatThreadCollection) => {
+  private readonly handleChatThreads = (chatThreads: GraphChat[], nextLink: string | undefined) => {
     this.notifyStateChange((draft: GraphChatListClient) => {
-      draft.nextLink = '';
-
-      const nextLinkUrl = chatThreadCollection['@odata.nextLink'];
-      if (nextLinkUrl && nextLinkUrl !== '') {
-        draft.nextLink = nextLinkUrl;
-      }
-      const uniqeChatThreads = chatThreadCollection.value.filter(
-        c => draft.chatThreads.findIndex(t => t.id === c.id) === -1
-      );
-      draft.chatThreads = draft.chatThreads.concat(uniqeChatThreads);
+      draft.status = 'chat threads loaded';
+      draft.chatThreads = chatThreads;
+      draft.moreChatThreadsToLoad = nextLink !== undefined && nextLink !== '';
     });
   };
 
@@ -328,7 +340,10 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
 
           if (this._graph !== undefined) {
             loadChatThreads(this._graph, this.chatThreadsPerPage).then(
-              chats => this.handleChatThreads(chats),
+              chats => {
+                const nextLink = chats['@odata.nextLink'];
+                this.handleChatThreads(chats.value, nextLink);
+              },
               err => error(err)
             );
           }

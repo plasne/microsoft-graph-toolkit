@@ -128,7 +128,7 @@ export const ChatList = (
                 />
               </Button>
             ))}
-            {chatListState?.nextLink !== '' && (
+            {chatListState?.moreChatThreadsToLoad === true && (
               <div className={styles.linkContainer}>
                 <Link onClick={loadMore} href="#" className={styles.loadMore}>
                   load more
