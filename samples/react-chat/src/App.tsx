@@ -26,7 +26,11 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
     }
   ];
 
-  return <ChatList chatThreadsPerPage={3} menuItems={menus} buttonItems={buttons} onSelected={onSelected} />;
+  const onMessageReceived = () => {
+    console.log('PlexChatLog: Message received');
+  }
+
+  return <ChatList chatThreadsPerPage={3} menuItems={menus} buttonItems={buttons} onSelected={onSelected} onMessageReceived={onMessageReceived}/>;
 });
 
 function App() {
