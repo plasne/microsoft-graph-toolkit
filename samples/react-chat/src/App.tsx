@@ -29,7 +29,7 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
     console.log('Chat threads loaded.');
   };
   const onMessageReceived = () => {
-    console.log('ChatLog: Message received');
+    console.log('SampleChatLog: Message received');
   };
 
   return (
