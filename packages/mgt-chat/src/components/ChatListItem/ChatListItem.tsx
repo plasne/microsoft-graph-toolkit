@@ -7,12 +7,13 @@ import {
   ChatMessageInfo,
   TeamworkApplicationIdentity
 } from '@microsoft/microsoft-graph-types';
-import { MgtTemplateProps, Person, PersonCardInteraction } from '@microsoft/mgt-react';
+import { MgtTemplateProps, Person, PersonCardInteraction, log } from '@microsoft/mgt-react';
 import { ProviderState, Providers, error } from '@microsoft/mgt-element';
 import { ChatListItemIcon } from '../ChatListItemIcon/ChatListItemIcon';
 import { rewriteEmojiContent } from '../../utils/rewriteEmojiContent';
 import { convert } from 'html-to-text';
 import { loadChatWithPreview } from '../../statefulClient/graph.chat';
+import { LastReadCache } from '../../statefulClient/Caching/LastReadCache';
 
 interface IMgtChatListItemProps {
   chat: Chat;
@@ -120,6 +121,7 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   // manage the internal state of the chat
   const [chatInternal, setChatInternal] = useState(chat);
   const [read, setRead] = useState<boolean>(isRead);
+  const cache = new LastReadCache();
 
   // shortcut if no valid user
   if (!myId) {
@@ -136,6 +138,7 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   // if chat changes, update the internal state to match
   useEffect(() => {
     setChatInternal(chat);
+    checkWhetherToMarkAsRead(chat);
   }, [chat]);
 
   // enrich the chat if necessary
@@ -148,12 +151,37 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
           return loadChatWithPreview(graph, id);
         };
         load(chatInternal.id).then(
-          c => setChatInternal(c),
+          c => {
+            setChatInternal(c);
+            checkWhetherToMarkAsRead(c);
+          },
           e => error(e)
         );
       }
     }
   }, [chatInternal]);
+
+  // check whether to mark the chat as read or not
+  const checkWhetherToMarkAsRead = (c: Chat) => {
+    cache.loadLastReadTime(c.id!).then(lastReadData => {
+      if (lastReadData) {
+        const lastUpdatedDateTime = new Date(c.lastUpdatedDateTime as string);
+        const lastMessagePreviewCreatedDateTime = new Date(c.lastMessagePreview?.createdDateTime as string);
+        const lastReadTime = new Date(lastReadData.lastReadTime as string);
+        if (
+          lastUpdatedDateTime > lastReadTime ||
+          lastMessagePreviewCreatedDateTime > lastReadTime ||
+          lastReadData.lastReadTime === null
+        ) {
+          log('marking chat as unread: ', c.id);
+          setRead(false);
+        } else {
+          log('marking chat as read: ', c.id);
+          setRead(true);
+        }
+      }
+    });
+  };
 
   // Copied and modified from the sample ChatItem.tsx
   // Determines the title in the case of 1:1 and self chats
