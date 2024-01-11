@@ -146,25 +146,38 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   }
 
   private loadAndAppendChatThreads(nextLink: string, items: GraphChat[], maxItems: number): void {
+    if (maxItems < 1) {
+      error('maxItem is invalid: ' + maxItems);
+      return;
+    }
+
     const handler = (latestChatThreads: ChatThreadCollection) => {
       items = items.concat(latestChatThreads.value);
 
       const handlerNextLink = latestChatThreads['@odata.nextLink'];
       if (items.length >= maxItems) {
+        if (items.length > maxItems) {
+          // return exact page size
+          this.handleChatThreads(items.slice(0, maxItems), 'more');
+          return;
+        }
+
         this.handleChatThreads(items, handlerNextLink);
         return;
       }
 
       if (handlerNextLink && handlerNextLink !== '') {
         this.loadAndAppendChatThreads(handlerNextLink, items, maxItems);
-      } else {
-        this.handleChatThreads(items, handlerNextLink);
         return;
       }
+
+      this.handleChatThreads(items, handlerNextLink);
     };
 
     if (nextLink === '') {
-      loadChatThreads(this._graph, this.chatThreadsPerPage).then(handler, err => error(err));
+      // max page count cannot exceed 50 per documentation
+      const pageCount = maxItems > 50 ? 50 : maxItems;
+      loadChatThreads(this._graph, pageCount).then(handler, err => error(err));
     } else {
       const filter = nextLink.split('?')[1];
       loadChatThreadsByPage(this._graph, filter).then(handler, err => error(err));
@@ -337,16 +350,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         // emit new state;
         if (this.userId) {
           void this.updateUserSubscription();
-
-          if (this._graph !== undefined) {
-            loadChatThreads(this._graph, this.chatThreadsPerPage).then(
-              chats => {
-                const nextLink = chats['@odata.nextLink'];
-                this.handleChatThreads(chats.value, nextLink);
-              },
-              err => error(err)
-            );
-          }
+          this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
         }
         return;
       case ProviderState.SignedOut:
