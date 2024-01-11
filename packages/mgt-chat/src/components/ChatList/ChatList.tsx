@@ -13,6 +13,7 @@ import ChatListMenuItem from '../ChatListHeader/ChatListMenuItem';
 
 export interface IChatListItemInteractionProps {
   onSelected: (e: GraphChat) => void;
+  onLoaded?: () => void;
 }
 
 const useStyles = makeStyles({
@@ -91,6 +92,11 @@ export const ChatList = (
   useEffect(() => {
     if (chatListClient) {
       chatListClient.onStateChange(setChatListState);
+      chatListClient.onStateChange(state => {
+        if (state.status === 'chat threads loaded' && props.onLoaded) {
+          props.onLoaded();
+        }
+      });
       return () => {
         void chatListClient.tearDown();
         chatListClient.offStateChange(setChatListState);
