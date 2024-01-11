@@ -17,7 +17,7 @@ import { graph } from '../utils/graph';
 import { GraphConfig } from './GraphConfig';
 import { GraphNotificationUserClient } from './GraphNotificationUserClient';
 import { ThreadEventEmitter } from './ThreadEventEmitter';
-import { ChatThreadCollection, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
+import { ChatThreadCollection, loadChat, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
 import { ChatMessageInfo, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { error } from '@microsoft/mgt-element';
 interface ODataType {
@@ -71,6 +71,18 @@ interface StatefulClient<T> {
    * @param handler Callback to be unregistered
    */
   offStateChange(handler: (state: T) => void): void;
+  /**
+   * Register a callback to receive ChatList events
+   *
+   * @param handler Callback to receive ChatList events
+   */
+  onChatListEvent(handler: (event: ChatListEvent) => void): void;
+  /**
+   * Remove a callback to receive ChatList events
+   *
+   * @param handler Callback to be unregistered
+   */
+  offChatListEvent(handler: (event: ChatListEvent) => void): void;
 
   chatThreadsPerPage: number;
 
@@ -111,6 +123,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private readonly _eventEmitter: ThreadEventEmitter;
   // private readonly _cache: MessageCache;
   private _stateSubscribers: ((state: GraphChatListClient) => void)[] = [];
+  private _chatListEventSubscribers: ((state: ChatListEvent) => void)[] = [];
   private readonly _graph: IGraph;
   constructor(chatThreadsPerPage: number) {
     this.updateUserInfo();
@@ -209,6 +222,31 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     }
   }
 
+  /**
+   * Register a callback to receive ChatList events
+   *
+   * @param {(event: ChatListEvent) => void} handler
+   * @memberof StatefulGraphChatListClient
+   */
+  public onChatListEvent(handler: (event: ChatListEvent) => void): void {
+    if (!this._chatListEventSubscribers.includes(handler)) {
+      this._chatListEventSubscribers.push(handler);
+    }
+  }
+
+  /**
+   * Unregister a callback from receiving ChatList events
+   *
+   * @param {(event: ChatListEvent) => void} handler
+   * @memberof StatefulGraphChatListClient
+   */
+  public offChatListEvent(handler: (event: ChatListEvent) => void): void {
+    const index = this._chatListEventSubscribers.indexOf(handler);
+    if (index !== -1) {
+      this._chatListEventSubscribers = this._chatListEventSubscribers.splice(index, 1);
+    }
+  }
+
   private readonly _initialState: GraphChatListClient = {
     status: 'initial',
     activeErrorMessages: [],
@@ -240,23 +278,40 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
    * Handle ChatListEvent event types.
    */
   private notifyChatMessageEventChange(message: ChatListEvent) {
-    this.notifyStateChange((draft: GraphChatListClient) => {
-      if (message.type === 'chatRenamed' && message.message.eventDetail) {
-        const eventDetail = message.message.eventDetail as EventMessageDetail;
+    this._chatListEventSubscribers.forEach(handler => handler(message));
+    if (message.type === 'chatRenamed' && message.message.eventDetail) {
+      const eventDetail = message.message.eventDetail as EventMessageDetail;
+      this.notifyStateChange((draft: GraphChatListClient) => {
         const chatThread = draft.chatThreads.find(c => c.id === message.message.chatId);
         if (chatThread) {
           chatThread.topic = eventDetail.chatDisplayName;
         }
+      });
+    }
+    if (message.type === 'chatMessageReceived') {
+      const chatThread = this._state.chatThreads.find(c => c.id === message.message.chatId);
+      if (chatThread) {
+        const msgInfo = message.message as ChatMessageInfo;
+        this.notifyStateChange((draft: GraphChatListClient) => {
+          const draftChatThread = draft.chatThreads.find(c => c.id === chatThread.id);
+          if (!draftChatThread) {
+            Error('Unexpected state discrepancy: Chat thread not found in draft state');
+            return;
+          }
+          draftChatThread.lastMessagePreview = msgInfo;
+          // remove the updated chat thread from the list and add it to the top
+          draft.chatThreads = draft.chatThreads.filter(c => c.id !== draftChatThread.id);
+          draft.chatThreads.unshift(draftChatThread);
+        });
+      } else {
+        // if the chat thread is not in the list, load it, add it to the top
+        loadChat(this._graph, message.message.chatId as string).then(chat => {
+          this.notifyStateChange((draft: GraphChatListClient) => {
+            draft.chatThreads.unshift(chat);
+          });
+        });
       }
-
-      if (message.type === 'chatMessageReceived') {
-        const chatThread = draft.chatThreads.find(c => c.id === message.message.chatId);
-        if (chatThread) {
-          const msgInfo = message.message as ChatMessageInfo;
-          chatThread.lastMessagePreview = msgInfo;
-        }
-      }
-    });
+    }
   }
 
   /*
