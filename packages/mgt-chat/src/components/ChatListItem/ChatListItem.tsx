@@ -138,19 +138,21 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   // if chat changes, update the internal state to match
   useEffect(() => {
     setChatInternal(chat);
-    checkWhetherToMarkAsRead(chat);
+    if (isLoaded()) {
+      checkWhetherToMarkAsRead(chat);
+    }
   }, [chat]);
 
   // enrich the chat if necessary
   useEffect(() => {
-    if (chatInternal.id && (!chatInternal.chatType || !chatInternal.members)) {
+    if (isLoaded()) {
       const provider = Providers.globalProvider;
       if (provider && provider.state === ProviderState.SignedIn) {
         const graph = provider.graph.forComponent('ChatListItem');
         const load = (id: string): Promise<Chat> => {
           return loadChatWithPreview(graph, id);
         };
-        load(chatInternal.id).then(
+        load(chatInternal.id!).then(
           c => {
             setChatInternal(c);
             checkWhetherToMarkAsRead(c);
@@ -160,6 +162,10 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
       }
     }
   }, [chatInternal]);
+
+  const isLoaded = () => {
+    return chatInternal.id && (!chatInternal.chatType || !chatInternal.members);
+  };
 
   // check whether to mark the chat as read or not
   const checkWhetherToMarkAsRead = (c: Chat) => {
@@ -171,7 +177,7 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
         if (
           lastUpdatedDateTime > lastReadTime ||
           lastMessagePreviewCreatedDateTime > lastReadTime ||
-          lastReadData.lastReadTime === null
+          !lastReadData.lastReadTime
         ) {
           log('marking chat as unread: ', c.id);
           setRead(false);
