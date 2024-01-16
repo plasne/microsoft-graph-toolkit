@@ -1,11 +1,15 @@
 import { MessageThreadProps, ErrorBarProps, Message } from '@azure/communication-react';
-import { ActiveAccountChanged, IGraph, LoginChangedEvent, ProviderState, Providers } from '@microsoft/mgt-element';
+import { ActiveAccountChanged, IGraph, LoginChangedEvent, ProviderState, Providers, log } from '@microsoft/mgt-element';
 import { GraphError } from '@microsoft/microsoft-graph-client';
 import {
+  AadUserConversationMember,
   ChatMessage,
   ChatRenamedEventMessageDetail,
+  ItemBody,
   MembersAddedEventMessageDetail,
-  MembersDeletedEventMessageDetail
+  MembersDeletedEventMessageDetail,
+  TeamsAppInstalledEventMessageDetail,
+  TeamsAppRemovedEventMessageDetail
 } from '@microsoft/microsoft-graph-types';
 import { produce } from 'immer';
 import { currentUserId } from '../utils/currentUser';
@@ -35,8 +39,21 @@ type ChatRenamedEventDetail = ODataType &
   ChatRenamedEventMessageDetail & {
     '@odata.type': '#microsoft.graph.chatRenamedEventMessageDetail';
   };
+type TeamsAppInstalledEventDetail = ODataType &
+  TeamsAppInstalledEventMessageDetail & {
+    '@odata.type': '#microsoft.graph.teamsAppInstalledEventMessageDetail';
+  };
+type TeamsAppRemovedEventDetail = ODataType &
+  TeamsAppRemovedEventMessageDetail & {
+    '@odata.type': '#microsoft.graph.teamsAppRemovedEventMessageDetail';
+  };
 
-type ChatMessageEvents = MembersAddedEventDetail | MembersRemovedEventDetail | ChatRenamedEventDetail;
+type ChatMessageEvents =
+  | MembersAddedEventDetail
+  | MembersRemovedEventDetail
+  | ChatRenamedEventDetail
+  | TeamsAppInstalledEventDetail
+  | TeamsAppRemovedEventDetail;
 
 // defines the type of the state object returned from the StatefulGraphChatListClient
 export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
@@ -47,10 +64,11 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
     | 'loading messages'
     | 'no session id'
     | 'no messages'
+    | 'chat threads loaded'
     | 'ready'
     | 'error';
   chatThreads: GraphChat[];
-  nextLink: string;
+  moreChatThreadsToLoad: boolean | undefined;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
 interface StatefulClient<T> {
@@ -70,6 +88,18 @@ interface StatefulClient<T> {
    * @param handler Callback to be unregistered
    */
   offStateChange(handler: (state: T) => void): void;
+  /**
+   * Register a callback to receive ChatList events
+   *
+   * @param handler Callback to receive ChatList events
+   */
+  onChatListEvent(handler: (event: ChatListEvent) => void): void;
+  /**
+   * Remove a callback to receive ChatList events
+   *
+   * @param handler Callback to be unregistered
+   */
+  offChatListEvent(handler: (event: ChatListEvent) => void): void;
 
   chatThreadsPerPage: number;
 
@@ -79,7 +109,9 @@ interface StatefulClient<T> {
 type MessageEventType =
   | '#microsoft.graph.membersAddedEventMessageDetail'
   | '#microsoft.graph.membersDeletedEventMessageDetail'
-  | '#microsoft.graph.chatRenamedEventMessageDetail';
+  | '#microsoft.graph.chatRenamedEventMessageDetail'
+  | '#microsoft.graph.teamsAppInstalledEventMessageDetail'
+  | '#microsoft.graph.teamsAppRemovedEventMessageDetail';
 
 /**
  * Extended Message type with additional properties.
@@ -89,10 +121,6 @@ export type GraphChatMessage = Message & {
   rawChatUrl: string;
 };
 
-interface EventMessageDetail {
-  chatDisplayName: string;
-}
-
 export interface ChatListEvent {
   type:
     | 'chatMessageReceived'
@@ -101,7 +129,9 @@ export interface ChatListEvent {
     | 'chatRenamed'
     | 'memberAdded'
     | 'memberRemoved'
-    | 'systemEvent';
+    | 'systemEvent'
+    | 'teamsAppInstalled'
+    | 'teamsAppRemoved';
   message: ChatMessage;
 }
 
@@ -110,6 +140,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private readonly _eventEmitter: ThreadEventEmitter;
   // private readonly _cache: MessageCache;
   private _stateSubscribers: ((state: GraphChatListClient) => void)[] = [];
+  private _chatListEventSubscribers: ((state: ChatListEvent) => void)[] = [];
   private readonly _graph: IGraph;
   constructor(chatThreadsPerPage: number) {
     this.updateUserInfo();
@@ -140,16 +171,47 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
    */
   public loadMoreChatThreads(): void {
     const state = this.getState();
+    const items: GraphChat[] = [];
+    this.loadAndAppendChatThreads('', items, state.chatThreads.length + this.chatThreadsPerPage);
+  }
 
-    if (state.nextLink === '') {
+  private loadAndAppendChatThreads(nextLink: string, items: GraphChat[], maxItems: number): void {
+    if (maxItems < 1) {
+      error('maxItem is invalid: ' + maxItems);
       return;
     }
 
-    const filter = state.nextLink.split('?')[1];
-    void loadChatThreadsByPage(this._graph, filter).then(
-      chats => this.handleChatThreads(chats),
-      e => error(e)
-    );
+    const handler = (latestChatThreads: ChatThreadCollection) => {
+      items = items.concat(latestChatThreads.value);
+
+      const handlerNextLink = latestChatThreads['@odata.nextLink'];
+      if (items.length >= maxItems) {
+        if (items.length > maxItems) {
+          // return exact page size
+          this.handleChatThreads(items.slice(0, maxItems), 'more');
+          return;
+        }
+
+        this.handleChatThreads(items, handlerNextLink);
+        return;
+      }
+
+      if (handlerNextLink && handlerNextLink !== '') {
+        this.loadAndAppendChatThreads(handlerNextLink, items, maxItems);
+        return;
+      }
+
+      this.handleChatThreads(items, handlerNextLink);
+    };
+
+    if (nextLink === '') {
+      // max page count cannot exceed 50 per documentation
+      const pageCount = maxItems > 50 ? 50 : maxItems;
+      loadChatThreads(this._graph, pageCount).then(handler, err => error(err));
+    } else {
+      const filter = nextLink.split('?')[1];
+      loadChatThreadsByPage(this._graph, filter).then(handler, err => error(err));
+    }
   }
 
   /**
@@ -177,12 +239,37 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     }
   }
 
+  /**
+   * Register a callback to receive ChatList events
+   *
+   * @param {(event: ChatListEvent) => void} handler
+   * @memberof StatefulGraphChatListClient
+   */
+  public onChatListEvent(handler: (event: ChatListEvent) => void): void {
+    if (!this._chatListEventSubscribers.includes(handler)) {
+      this._chatListEventSubscribers.push(handler);
+    }
+  }
+
+  /**
+   * Unregister a callback from receiving ChatList events
+   *
+   * @param {(event: ChatListEvent) => void} handler
+   * @memberof StatefulGraphChatListClient
+   */
+  public offChatListEvent(handler: (event: ChatListEvent) => void): void {
+    const index = this._chatListEventSubscribers.indexOf(handler);
+    if (index !== -1) {
+      this._chatListEventSubscribers = this._chatListEventSubscribers.splice(index, 1);
+    }
+  }
+
   private readonly _initialState: GraphChatListClient = {
     status: 'initial',
     activeErrorMessages: [],
     userId: '',
     chatThreads: [],
-    nextLink: ''
+    moreChatThreadsToLoad: undefined
   };
 
   /**
@@ -207,22 +294,79 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   /**
    * Handle ChatListEvent event types.
    */
-  private notifyChatMessageEventChange(message: ChatListEvent) {
+  private notifyChatMessageEventChange(event: ChatListEvent) {
     this.notifyStateChange((draft: GraphChatListClient) => {
-      if (message.type === 'chatRenamed' && message.message.eventDetail) {
-        const eventDetail = message.message.eventDetail as EventMessageDetail;
-        const chatThread = draft.chatThreads.find(c => c.id === message.message.chatId);
-        if (chatThread) {
-          chatThread.topic = eventDetail.chatDisplayName;
-        }
-      }
+      // find the chat thread
+      const chatThreadIndex = draft.chatThreads.findIndex(c => c.id === event.message.chatId);
+      const chatThread = draft.chatThreads[chatThreadIndex];
 
-      if (message.type === 'chatMessageReceived') {
-        const chatThread = draft.chatThreads.find(c => c.id === message.message.chatId);
-        if (chatThread) {
-          const msgInfo = message.message as ChatMessageInfo;
-          chatThread.lastMessagePreview = msgInfo;
+      // func to bring the chat thread to the top of the list
+      const bringToTop = (newThread?: GraphChat) => {
+        draft.chatThreads.splice(chatThreadIndex, 1);
+        draft.chatThreads.unshift(newThread ?? chatThread);
+      };
+
+      // handle the events
+      if (event.type === 'chatRenamed' && event.message?.eventDetail && chatThread) {
+        // rename the chat thread in-place
+        chatThread.topic =
+          (event.message.eventDetail as ChatRenamedEventMessageDetail)?.chatDisplayName ?? chatThread.topic;
+      } else if (event.type === 'memberAdded' && chatThread) {
+        // inject a chat thread with only the id to force a reload; this is necessary because the
+        // notification does not include the displayName of the user who was added
+        const newThread = { id: chatThread.id } as GraphChat;
+        bringToTop(newThread);
+      } else if (event.type === 'memberRemoved' && event.message?.eventDetail && chatThread) {
+        // update the user list to remove the user; while we could add a "User removed" message
+        // the Teams client doesn't show a message and the Graph API does not show a message either
+        const membersToRemove = (event.message.eventDetail as MembersDeletedEventMessageDetail).members;
+        if (membersToRemove) {
+          const membersToRemoveSet = new Set(membersToRemove.map(member => member.id));
+          chatThread.members = chatThread.members?.filter(member => {
+            const user = member as AadUserConversationMember;
+            return !membersToRemoveSet.has(user.userId);
+          });
         }
+      } else if (event.type === 'teamsAppInstalled' && event.message?.eventDetail && chatThread) {
+        // add a message about the app being added; Teams does "User added", but this provides
+        // more clarity since the user list doesn't change
+        const details = event.message.eventDetail as TeamsAppInstalledEventMessageDetail;
+        chatThread.lastMessagePreview = {
+          body: {
+            content: `${details.teamsAppDisplayName || details.teamsAppId} app added`,
+            contentType: 'text'
+          } as ItemBody,
+          lastModifiedDateTime: event.message.lastModifiedDateTime
+        } as ChatMessageInfo;
+        log('injected', chatThread.lastMessagePreview);
+        bringToTop();
+      } else if (event.type === 'teamsAppRemoved' && event.message?.eventDetail && chatThread) {
+        // there is no behavior in teams for an app being removed
+      } else if (event.type === 'chatMessageEdited' && chatThread) {
+        // update the last message preview in-place
+        chatThread.lastMessagePreview = event.message as ChatMessageInfo;
+        chatThread.lastUpdatedDateTime = event.message.lastModifiedDateTime;
+      } else if (event.type === 'chatMessageDeleted' && chatThread) {
+        // update the last message preview in-place
+        chatThread.lastMessagePreview = {
+          lastModifiedDateTime: event.message.lastModifiedDateTime,
+          isDeleted: true
+        } as ChatMessageInfo;
+      } else if (event.type === 'chatMessageReceived' && event.message && chatThread) {
+        // update the last message preview and bring to the top
+        chatThread.lastMessagePreview = event.message as ChatMessageInfo;
+        chatThread.lastUpdatedDateTime = event.message.lastModifiedDateTime;
+        bringToTop();
+      } else if (event.type === 'chatMessageReceived' && event.message?.chatId) {
+        // create a new chat thread at the top
+        const newChatThread: GraphChat = {
+          id: event.message.chatId,
+          lastMessagePreview: event.message as ChatMessageInfo,
+          lastUpdatedDateTime: event.message.lastModifiedDateTime
+        };
+        draft.chatThreads.unshift(newChatThread);
+      } else {
+        log(`received unrecognized event type '${event.type}' from the user subscription.`);
       }
     });
   }
@@ -241,8 +385,12 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
           return 'memberRemoved';
         case '#microsoft.graph.chatRenamedEventMessageDetail':
           return 'chatRenamed';
+        case '#microsoft.graph.teamsAppInstalledEventMessageDetail':
+          return 'teamsAppInstalled';
+        case '#microsoft.graph.teamsAppRemovedEventMessageDetail':
+          return 'teamsAppRemoved';
         default:
-          return 'systemEvent';
+          return eventDetail['@odata.type'];
       }
     }
 
@@ -264,8 +412,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private readonly onMessageDeleted = (message: ChatMessage) => {
     if (message.chatId) {
       this.notifyChatMessageEventChange({ message, type: 'chatMessageDeleted' });
-
-      // void this._cache.deleteMessage(message.chatId, message);
     }
   };
 
@@ -275,8 +421,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private readonly onMessageEdited = (message: ChatMessage) => {
     if (message.chatId) {
       this.notifyChatMessageEventChange({ message, type: 'chatMessageEdited' });
-
-      // await this._cache.cacheMessage(message.chatId, message);
     }
   };
 
@@ -293,18 +437,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   /*
    * Event handler to be called when we need to load more chat threads.
    */
-  private readonly handleChatThreads = (chatThreadCollection: ChatThreadCollection) => {
+  private readonly handleChatThreads = (chatThreads: GraphChat[], nextLink: string | undefined) => {
     this.notifyStateChange((draft: GraphChatListClient) => {
-      draft.nextLink = '';
-
-      const nextLinkUrl = chatThreadCollection['@odata.nextLink'];
-      if (nextLinkUrl && nextLinkUrl !== '') {
-        draft.nextLink = nextLinkUrl;
-      }
-      const uniqeChatThreads = chatThreadCollection.value.filter(
-        c => draft.chatThreads.findIndex(t => t.id === c.id) === -1
-      );
-      draft.chatThreads = draft.chatThreads.concat(uniqeChatThreads);
+      draft.status = 'chat threads loaded';
+      draft.chatThreads = chatThreads;
+      draft.moreChatThreadsToLoad = nextLink !== undefined && nextLink !== '';
     });
   };
 
@@ -325,13 +462,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         // emit new state;
         if (this.userId) {
           void this.updateUserSubscription();
-
-          if (this._graph !== undefined) {
-            loadChatThreads(this._graph, this.chatThreadsPerPage).then(
-              chats => this.handleChatThreads(chats),
-              err => error(err)
-            );
-          }
+          this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
         }
         return;
       case ProviderState.SignedOut:

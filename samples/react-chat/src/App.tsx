@@ -25,8 +25,23 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
       onClick: () => console.log('My custom menu item clicked')
     }
   ];
+  const onLoaded = () => {
+    console.log('Chat threads loaded.');
+  };
+  const onMessageReceived = () => {
+    console.log('SampleChatLog: Message received');
+  };
 
-  return <ChatList chatThreadsPerPage={3} menuItems={menus} buttonItems={buttons} onSelected={onSelected} />;
+  return (
+    <ChatList
+      onLoaded={onLoaded}
+      chatThreadsPerPage={10}
+      menuItems={menus}
+      buttonItems={buttons}
+      onSelected={onSelected}
+      onMessageReceived={onMessageReceived}
+    />
+  );
 });
 
 function App() {
