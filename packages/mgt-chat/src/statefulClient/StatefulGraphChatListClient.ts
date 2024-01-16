@@ -305,11 +305,13 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         });
       } else {
         // if the chat thread is not in the list, load it, add it to the top
-        loadChat(this._graph, message.message.chatId as string).then(chat => {
-          this.notifyStateChange((draft: GraphChatListClient) => {
-            draft.chatThreads.unshift(chat);
-          });
-        }).catch(e => Error(e));
+        loadChat(this._graph, message.message.chatId!)
+          .then(chat => {
+            this.notifyStateChange((draft: GraphChatListClient) => {
+              draft.chatThreads.unshift(chat);
+            });
+          })
+          .catch(e => error('Unexpected Error while loading Chat Thread: ', e));
       }
     }
   }
