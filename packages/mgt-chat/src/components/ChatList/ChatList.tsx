@@ -61,6 +61,7 @@ export const ChatList = ({
   ...props
 }: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
+  const [headerBannerMessage, setHeaderBannerMessage] = useState<string>('');
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [menuItems, setMenuItems] = useState<ChatListMenuItem[]>(props.menuItems === undefined ? [] : props.menuItems);
@@ -106,6 +107,8 @@ export const ChatList = ({
   }, [selectedItem]);
 
   useEffect(() => {
+    setHeaderBannerMessage(''); // reset
+
     // handles events emitted from the chat list client
     const handleChatListEvent = (event: ChatListEvent) => {
       if (event.type === 'chatMessageReceived') {
@@ -126,6 +129,7 @@ export const ChatList = ({
         chatListClient.offStateChange(setChatListState);
         chatListClient.offChatListEvent(handleChatListEvent);
         void chatListClient.tearDown();
+        setHeaderBannerMessage('Oops! The connection was disrupted, please refresh.');
       };
     }
   }, [chatListClient]);
@@ -143,7 +147,11 @@ export const ChatList = ({
       <FluentProvider theme={webLightTheme}>
         <div>
           <div className={styles.headerContainer}>
-            <ChatListHeader buttonItems={chatListButtonItems} menuItems={menuItems} />
+            <ChatListHeader
+              bannerMessage={headerBannerMessage}
+              buttonItems={chatListButtonItems}
+              menuItems={menuItems}
+            />
           </div>
           <div>
             {chatListState?.chatThreads.map(c => (
