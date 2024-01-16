@@ -277,7 +277,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
           this.notifyStateChange((draft: GraphChatListClient) => {
             draft.chatThreads.unshift(chat);
           });
-        });
+        }).catch(e => Error(e));
       }
     }
   }
