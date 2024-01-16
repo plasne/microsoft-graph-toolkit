@@ -123,11 +123,6 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   const [read, setRead] = useState<boolean>(isRead);
   const cache = new LastReadCache();
 
-  // shortcut if no valid user
-  if (!myId) {
-    return <></>;
-  }
-
   // when isSelected changes to true, setRead to true
   useEffect(() => {
     if (isSelected) {
@@ -168,25 +163,28 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
   };
 
   // check whether to mark the chat as read or not
-  const checkWhetherToMarkAsRead = (c: Chat) => {
-    cache.loadLastReadTime(c.id!).then(lastReadData => {
-      if (lastReadData) {
-        const lastUpdatedDateTime = new Date(c.lastUpdatedDateTime as string);
-        const lastMessagePreviewCreatedDateTime = new Date(c.lastMessagePreview?.createdDateTime as string);
-        const lastReadTime = new Date(lastReadData.lastReadTime as string);
-        if (
-          lastUpdatedDateTime > lastReadTime ||
-          lastMessagePreviewCreatedDateTime > lastReadTime ||
-          !lastReadData.lastReadTime
-        ) {
-          log('marking chat as unread: ', c.id);
-          setRead(false);
-        } else {
-          log('marking chat as read: ', c.id);
-          setRead(true);
+  const checkWhetherToMarkAsRead = async (c: Chat) => {
+    await cache
+      .loadLastReadTime(c.id!)
+      .then(lastReadData => {
+        if (lastReadData) {
+          const lastUpdatedDateTime = new Date(c.lastUpdatedDateTime!);
+          const lastMessagePreviewCreatedDateTime = new Date(c.lastMessagePreview?.createdDateTime as string);
+          const lastReadTime = new Date(lastReadData.lastReadTime as string);
+          if (
+            lastUpdatedDateTime > lastReadTime ||
+            lastMessagePreviewCreatedDateTime > lastReadTime ||
+            !lastReadData.lastReadTime
+          ) {
+            log('marking chat as unread: ', c.id);
+            setRead(false);
+          } else {
+            log('marking chat as read: ', c.id);
+            setRead(true);
+          }
         }
-      }
-    });
+      })
+      .catch(e => error(e));
   };
 
   // Copied and modified from the sample ChatItem.tsx
@@ -215,9 +213,9 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
         );
         // if there are more than 3 members, display the first 3 members' first names and a count of the remaining members
       } else if (chatObj.members.length > 3) {
-        let firstThreeMembersSlice = others.slice(0, 3);
-        let remainingMembersCount = chatObj.members.length - 3;
-        let groupMembersString =
+        const firstThreeMembersSlice = others.slice(0, 3);
+        const remainingMembersCount = chatObj.members.length - 3;
+        const groupMembersString =
           firstThreeMembersSlice.map(m => (m as AadUserConversationMember).displayName?.split(' ')[0]).join(', ') +
           ' +' +
           remainingMembersCount;
@@ -366,6 +364,10 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
     read ? styles.isNormal : styles.isBold
   );
 
+  // short cut if the id is not defined
+  if (!myId) {
+    return <></>;
+  }
   return (
     <div className={container}>
       <div className={styles.profileImage}>{getDefaultProfileImage(chatInternal)}</div>
