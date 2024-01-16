@@ -171,17 +171,12 @@ export const ChatListItem = ({ chat, myId, isSelected, isRead }: IMgtChatListIte
           const lastUpdatedDateTime = new Date(c.lastUpdatedDateTime!);
           const lastMessagePreviewCreatedDateTime = new Date(c.lastMessagePreview?.createdDateTime as string);
           const lastReadTime = new Date(lastReadData.lastReadTime as string);
-          if (
+          const isRead = !(
             lastUpdatedDateTime > lastReadTime ||
             lastMessagePreviewCreatedDateTime > lastReadTime ||
             !lastReadData.lastReadTime
-          ) {
-            log('marking chat as unread: ', c.id);
-            setRead(false);
-          } else {
-            log('marking chat as read: ', c.id);
-            setRead(true);
-          }
+          );
+          setRead(isRead);
         }
       })
       .catch(e => error(e));
