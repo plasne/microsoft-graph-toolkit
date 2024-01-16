@@ -21,7 +21,7 @@ import { graph } from '../utils/graph';
 import { GraphConfig } from './GraphConfig';
 import { GraphNotificationUserClient } from './GraphNotificationUserClient';
 import { ThreadEventEmitter } from './ThreadEventEmitter';
-import { ChatThreadCollection, loadChat, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
+import { ChatThreadCollection, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
 import { ChatMessageInfo, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { error } from '@microsoft/mgt-element';
 interface ODataType {
