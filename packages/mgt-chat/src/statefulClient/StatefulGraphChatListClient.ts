@@ -60,6 +60,7 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
   status:
     | 'initial'
     | 'creating server connections'
+    | 'server connection lost'
     | 'subscribing to notifications'
     | 'loading messages'
     | 'no session id'
@@ -585,6 +586,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('chatMessageReceived', (message: ChatMessage) => void this.onMessageReceived(message));
     this._eventEmitter.on('chatMessageDeleted', this.onMessageDeleted);
     this._eventEmitter.on('chatMessageEdited', (message: ChatMessage) => void this.onMessageEdited(message));
+    this._eventEmitter.on('disconnected', () => {
+      this.notifyStateChange((draft: GraphChatListClient) => {
+        draft.status = 'server connection lost';
+      });
+    });
   }
 }
 

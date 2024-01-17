@@ -1,5 +1,11 @@
 import { BetaGraph, IGraph, Providers, createFromProvider, error, log } from '@microsoft/mgt-element';
-import { HubConnection, HubConnectionBuilder, IHttpConnectionOptions, LogLevel } from '@microsoft/signalr';
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  IHttpConnectionOptions,
+  LogLevel,
+  RetryContext
+} from '@microsoft/signalr';
 import { ThreadEventEmitter } from './ThreadEventEmitter';
 import type {
   Entity,
@@ -219,7 +225,6 @@ export class GraphNotificationUserClient {
   private readonly syncTimerWrapper = () => void this.renewalTimer();
 
   private readonly renewalTimer = async () => {
-    log(`running subscription renewal timer for userId: ${this.userId} sessionId: ${this.sessionId}`);
     const subscriptions =
       (await this.subscriptionCache.loadSubscriptions(this.userId, this.sessionId))?.subscriptions || [];
     if (subscriptions.length === 0) {
@@ -278,11 +283,31 @@ export class GraphNotificationUserClient {
       accessTokenFactory: this.getToken,
       withCredentials: false
     };
+
+    // retry up to 10 times
+    const retryTimes = [0, 2000, 10000, 30000, 45000, 60000, 90000, 120000, 180000, 240000];
+    const retryPolicy = {
+      nextRetryDelayInMilliseconds: (context: RetryContext) => {
+        const index =
+          context.previousRetryCount < retryTimes.length ? context.previousRetryCount : retryTimes.length - 1;
+        return retryTimes[index];
+      }
+    };
+
     const connection = new HubConnectionBuilder()
       .withUrl(GraphConfig.adjustNotificationUrl(notificationUrl), connectionOptions)
-      .withAutomaticReconnect()
+      .withAutomaticReconnect(retryPolicy)
       .configureLogging(LogLevel.Information)
       .build();
+
+    connection.onclose((err?: Error) => {
+      const emitter: ThreadEventEmitter | undefined = this.emitter;
+      if (err) {
+        log('Connection closed with error', err);
+      }
+
+      emitter?.disconnected();
+    });
 
     connection.onreconnected(this.onReconnect);
 

@@ -125,9 +125,16 @@ export const ChatList = ({
         if (state.status === 'chat threads loaded' && props.onLoaded) {
           props.onLoaded();
         }
+
+        if (state.status === 'server connection lost') {
+          // this happens when we have exhausted all retries to reconnect to the server
+          setHeaderBannerMessage('Oops! The connection was disrupted, please refresh.');
+        }
       });
       chatListClient.onChatListEvent(handleChatListEvent);
       return () => {
+        // log state of chatlistclient for debugging purposes
+        log(chatListClient.getState());
         chatListClient.offStateChange(setChatListState);
         chatListClient.offChatListEvent(handleChatListEvent);
         void chatListClient.tearDown();
