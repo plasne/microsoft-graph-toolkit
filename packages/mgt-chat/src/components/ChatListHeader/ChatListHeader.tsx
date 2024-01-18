@@ -50,8 +50,7 @@ export const ChatListHeader = (
   props: MgtTemplateProps &
     IChatListMenuItemsProps & {
       buttonItems?: ChatListButtonItem[];
-      bannerMessage?: string;
-      bannerClassName?: string;
+      bannerMessage: string;
     }
 ) => {
   const classes = useStyles();
@@ -59,9 +58,7 @@ export const ChatListHeader = (
   const buttonItems: ChatListButtonItem[] = props.buttonItems === undefined ? [] : props.buttonItems;
   return (
     <div className={classes.headerContainer}>
-      {props.bannerMessage && props.bannerMessage !== '' && (
-        <div className={classes.bannerClassName}>{props.bannerMessage}</div>
-      )}
+      {props.bannerMessage !== '' && <div className={classes.bannerClassName}>{props.bannerMessage}</div>}
       <div className={classes.controlsContainer}>
         <div>
           {buttonItems.map((buttonItem, index) => (

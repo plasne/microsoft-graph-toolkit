@@ -133,10 +133,8 @@ export const ChatList = ({
         }
 
         if (state.status === 'server connection lost') {
-          // this happens when
-          // a) we lost connection to the server and we will try to reconnect OR
-          // b) we have exhausted all retries to reconnect to the server
-          setHeaderBannerMessage('Oops! The connection was disrupted, please refresh.');
+          // this happens when we lost connection to the server and we will try to reconnect
+          setHeaderBannerMessage('We ran into a problem. Reconnecting...');
         }
       });
       chatListClient.onChatListEvent(handleChatListEvent);
@@ -146,7 +144,7 @@ export const ChatList = ({
         chatListClient.offStateChange(setChatListState);
         chatListClient.offChatListEvent(handleChatListEvent);
         void chatListClient.tearDown();
-        setHeaderBannerMessage('Oops! The connection was disrupted, please refresh.');
+        setHeaderBannerMessage('We ran into a problem. Reconnecting...');
       };
     }
   }, [chatListClient]);

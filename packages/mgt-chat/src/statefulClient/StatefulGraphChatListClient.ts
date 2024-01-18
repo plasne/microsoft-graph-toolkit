@@ -64,7 +64,6 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
     | 'server connection established'
     | 'subscribing to notifications'
     | 'loading messages'
-    | 'no session id'
     | 'no messages'
     | 'chat threads loaded'
     | 'ready'
@@ -535,10 +534,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     });
   }
 
-  public get sessionId(): string {
-    return 'default';
-  }
-
   /**
    * A helper to co-ordinate the loading of a chat and its messages, and the subscription to notifications for that chat
    *
@@ -557,14 +552,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         draft.status = 'creating server connections';
       });
       try {
-        // Prefer sequential promise resolving to catch loading message errors
-        // TODO: in parallel promise resolving, find out how to trigger different
-        // TODO: state for failed subscriptions in GraphChatClient.onSubscribeFailed
-        const tasks: Promise<unknown>[] = [];
-        // subscribing to notifications will trigger the chatMessageNotificationsSubscribed event
-        // this client will then load the chat and messages when that event listener is called
-        tasks.push(this._notificationClient.subscribeToUserNotifications(this._userId, this.sessionId));
-        await Promise.all(tasks);
+        await this._notificationClient.subscribeToUserNotifications(this._userId);
       } catch (e) {
         error('Failed to load chat data or subscribe to notications: ', e);
         if (e instanceof GraphError) {
@@ -573,10 +561,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
           });
         }
       }
-    } else {
-      this.notifyStateChange((draft: GraphChatListClient) => {
-        draft.status = 'no session id';
-      });
     }
   }
 
