@@ -67,6 +67,7 @@ export const ChatList = ({
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [menuItems, setMenuItems] = useState<ChatListMenuItem[]>(props.menuItems === undefined ? [] : props.menuItems);
+  const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
   const cache = new LastReadCache();
 
   // wait for provider to be ready before setting client and state
@@ -77,6 +78,7 @@ export const ChatList = ({
         const client = new StatefulGraphChatListClient(props.chatThreadsPerPage);
         setChatListClient(client);
         setChatListState(client.getState());
+        setIsSignedIn(true);
       }
     });
 
@@ -160,7 +162,7 @@ export const ChatList = ({
       <FluentProvider theme={webLightTheme}>
         <div>
           <div className={styles.headerContainer}>
-            <ChatListHeader buttonItems={chatListButtonItems} menuItems={menuItems} />
+            <ChatListHeader isSignedIn={isSignedIn} buttonItems={chatListButtonItems} menuItems={menuItems} />
           </div>
           <div>
             {chatListState?.chatThreads.map(c => (

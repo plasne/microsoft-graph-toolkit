@@ -39,6 +39,7 @@ export const ChatListHeader = (
   props: MgtTemplateProps &
     IChatListMenuItemsProps & {
       buttonItems?: ChatListButtonItem[];
+      isSignedIn?: boolean;
     }
 ) => {
   const classes = useStyles();
@@ -47,20 +48,19 @@ export const ChatListHeader = (
   return (
     <div className={classes.headerContainer}>
       <div>
-        {buttonItems.map((buttonItem, index) => (
-          <Button key={index} className={classes.button} onClick={buttonItem.onClick}>
-            <div className={classes.buttonIcon}>
-              <Circle>{buttonItem.renderIcon()}</Circle>
-            </div>
-          </Button>
-        ))}
+        {props.isSignedIn === true &&
+          buttonItems.map((buttonItem, index) => (
+            <Button key={index} className={classes.button} onClick={buttonItem.onClick}>
+              <div className={classes.buttonIcon}>
+                <Circle>{buttonItem.renderIcon()}</Circle>
+              </div>
+            </Button>
+          ))}
       </div>
       <div>
         <Login showPresence={true} loginView="avatar" />
       </div>
-      <div>
-        <EllipsisMenu menuItems={props.menuItems} />
-      </div>
+      <div>{props.isSignedIn === true && <EllipsisMenu menuItems={props.menuItems} />}</div>
     </div>
   );
 };
