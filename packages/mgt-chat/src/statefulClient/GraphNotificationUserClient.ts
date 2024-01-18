@@ -97,6 +97,8 @@ export class GraphNotificationUserClient {
   private readonly onReconnect = (connectionId: string | undefined) => {
     log(`Reconnected. ConnectionId: ${connectionId || 'undefined'}`);
     // void this.renewChatSubscriptions();
+    const emitter: ThreadEventEmitter | undefined = this.emitter;
+    emitter?.connected();
   };
 
   private readonly receiveNotificationMessage = (message: string) => {
@@ -320,8 +322,8 @@ export class GraphNotificationUserClient {
       .configureLogging(LogLevel.Information)
       .build();
 
+    const emitter: ThreadEventEmitter | undefined = this.emitter;
     connection.onclose((err?: Error) => {
-      const emitter: ThreadEventEmitter | undefined = this.emitter;
       if (err) {
         log('Connection closed with error', err);
       }
@@ -331,6 +333,10 @@ export class GraphNotificationUserClient {
 
     connection.onreconnected(this.onReconnect);
 
+    connection.onreconnecting(() => {
+      emitter?.disconnected();
+    });
+
     connection.on('receivenotificationmessageasync', this.receiveNotificationMessage);
 
     connection.on('EchoMessage', log);
@@ -339,6 +345,7 @@ export class GraphNotificationUserClient {
     try {
       await connection.start();
       log(connection);
+      emitter?.connected();
     } catch (e) {
       error('An error occurred connecting to the notification web socket', e);
     }

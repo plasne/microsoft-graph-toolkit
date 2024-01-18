@@ -23,6 +23,7 @@ export type ChatEvent =
   | 'participantAdded'
   | 'participantRemoved'
   | 'disconnected'
+  | 'connected'
   | 'notificationsSubscribedForResource';
 
 export class ThreadEventEmitter {
@@ -68,5 +69,8 @@ export class ThreadEventEmitter {
   }
   disconnected() {
     this.emitter.emit('disconnected');
+  }
+  connected() {
+    this.emitter.emit('connected');
   }
 }

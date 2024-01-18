@@ -61,6 +61,7 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
     | 'initial'
     | 'creating server connections'
     | 'server connection lost'
+    | 'server connection established'
     | 'subscribing to notifications'
     | 'loading messages'
     | 'no session id'
@@ -565,7 +566,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         tasks.push(this._notificationClient.subscribeToUserNotifications(this._userId, this.sessionId));
         await Promise.all(tasks);
       } catch (e) {
-        console.error('Failed to load chat data or subscribe to notications: ', e);
+        error('Failed to load chat data or subscribe to notications: ', e);
         if (e instanceof GraphError) {
           this.notifyStateChange((draft: GraphChatListClient) => {
             draft.status = 'no messages';
@@ -589,6 +590,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('disconnected', () => {
       this.notifyStateChange((draft: GraphChatListClient) => {
         draft.status = 'server connection lost';
+      });
+    });
+    this._eventEmitter.on('connected', () => {
+      this.notifyStateChange((draft: GraphChatListClient) => {
+        draft.status = 'server connection established';
       });
     });
   }

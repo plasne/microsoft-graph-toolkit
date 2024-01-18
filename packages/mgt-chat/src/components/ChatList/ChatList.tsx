@@ -109,8 +109,6 @@ export const ChatList = ({
   }, [selectedChatId]);
 
   useEffect(() => {
-    setHeaderBannerMessage(''); // reset
-
     // handles events emitted from the chat list client
     const handleChatListEvent = (event: ChatListEvent) => {
       if (event.type === 'chatMessageReceived') {
@@ -124,6 +122,14 @@ export const ChatList = ({
       chatListClient.onStateChange(state => {
         if (state.status === 'chat threads loaded' && props.onLoaded) {
           props.onLoaded();
+        }
+
+        if (state.status === 'server connection established') {
+          setHeaderBannerMessage(''); // reset
+        }
+
+        if (state.status === 'creating server connections') {
+          setHeaderBannerMessage('Connecting...');
         }
 
         if (state.status === 'server connection lost') {
