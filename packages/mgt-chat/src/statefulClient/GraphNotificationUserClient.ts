@@ -220,42 +220,41 @@ export class GraphNotificationUserClient {
       } catch (e) {
         error(e);
       }
-      return;
-    }
+    } else {
+      for (const subscription of subscriptions) {
+        if (!subscription.expirationDateTime || !subscription.id || !subscription.notificationUrl) continue;
 
-    for (const subscription of subscriptions) {
-      if (!subscription.expirationDateTime || !subscription.id || !subscription.notificationUrl) continue;
+        const expirationTime = new Date(subscription.expirationDateTime);
+        const now = new Date();
+        const diff = Math.round((expirationTime.getTime() - now.getTime()) / 1000);
 
-      const expirationTime = new Date(subscription.expirationDateTime);
-      const now = new Date();
-      const diff = Math.round((expirationTime.getTime() - now.getTime()) / 1000);
+        if (diff <= appSettings.renewalThreshold) {
+          this.renewalCount++;
+          log(`Renewing Graph subscription. RenewalCount: ${this.renewalCount}.`);
 
-      if (diff <= appSettings.renewalThreshold) {
-        this.renewalCount++;
-        log(`Renewing Graph subscription. RenewalCount: ${this.renewalCount}.`);
+          const newExpirationTime = new Date(
+            new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
+          );
 
-        const newExpirationTime = new Date(
-          new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
-        );
-
-        try {
-          await this.renewSubscription(subscription.id, newExpirationTime.toISOString());
-        } catch (e) {
-          error(e);
-          // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
-          if ((e as { statusCode?: number }).statusCode === 404) {
-            log('Removing subscription from cache', subscription.id);
-            await this.subscriptionCache.deleteCachedSubscriptions(this.userId, this.sessionId);
-            await this.subscribeToUserNotifications(this.userId);
+          try {
+            await this.renewSubscription(subscription.id, newExpirationTime.toISOString());
+          } catch (e) {
+            error(e);
+            // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
+            if ((e as { statusCode?: number }).statusCode === 404) {
+              log('Removing subscription from cache', subscription.id);
+              await this.subscriptionCache.deleteCachedSubscriptions(this.userId, this.sessionId);
+              await this.subscribeToUserNotifications(this.userId);
+            }
           }
+        } else {
+          // create a connection to the web socket if one does not exist
+          if (!this.connection) await this.createSignalRConnection(subscription.notificationUrl);
         }
-      } else {
-        // create a connection to the web socket if one does not exist
-        if (!this.connection) await this.createSignalRConnection(subscription.notificationUrl);
-      }
 
-      // Expecting only one subscription per user
-      break;
+        // Expecting only one subscription per user
+        break;
+      }
     }
 
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
