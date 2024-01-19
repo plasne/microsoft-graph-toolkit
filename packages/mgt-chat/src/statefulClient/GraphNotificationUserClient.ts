@@ -50,6 +50,7 @@ export class GraphNotificationUserClient {
   private connection?: HubConnection = undefined;
   private renewalInterval?: string;
   private renewalCount = 0;
+  private isRewnewalInProgress = false;
   private userId = '';
   private get sessionId() {
     return 'default';
@@ -210,6 +211,13 @@ export class GraphNotificationUserClient {
   };
 
   private readonly renewal = async () => {
+    if (this.isRewnewalInProgress) {
+      log('Renewal already in progress');
+      return;
+    }
+
+    this.isRewnewalInProgress = true;
+
     const subscriptions =
       (await this.subscriptionCache.loadSubscriptions(this.userId, this.sessionId))?.subscriptions || [];
     if (subscriptions.length === 0) {
@@ -257,6 +265,7 @@ export class GraphNotificationUserClient {
       }
     }
 
+    this.isRewnewalInProgress = false;
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
   };
 
