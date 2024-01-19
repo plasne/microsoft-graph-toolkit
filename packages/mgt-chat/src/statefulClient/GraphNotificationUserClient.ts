@@ -83,11 +83,10 @@ export class GraphNotificationUserClient {
    * Call this method when the component that depends an instance of this class is being removed from the DOM
    * i.e
    */
-  public async tearDown() {
+  public tearDown() {
     log('cleaning up user graph notification resources');
     if (this.renewalInterval) this.timer.clearInterval(this.renewalInterval);
     this.timer.close();
-    await this.unsubscribeFromUserNotifications(this.userId);
   }
 
   private readonly getToken = async () => {

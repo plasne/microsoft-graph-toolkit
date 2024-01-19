@@ -143,7 +143,7 @@ export const ChatList = ({
         log(chatListClient.getState());
         chatListClient.offStateChange(setChatListState);
         chatListClient.offChatListEvent(handleChatListEvent);
-        void chatListClient.tearDown();
+        chatListClient.tearDown();
         setHeaderBannerMessage('We ran into a problem. Reconnecting...');
       };
     }
