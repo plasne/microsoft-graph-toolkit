@@ -266,6 +266,7 @@ export class GraphNotificationUserClient {
     }
 
     this.isRewnewalInProgress = false;
+    log('Starting timer for renewal');
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
   };
 
