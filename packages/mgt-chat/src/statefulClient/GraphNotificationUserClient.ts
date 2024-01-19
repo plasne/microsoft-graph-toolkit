@@ -21,7 +21,7 @@ import { Timer } from '../utils/Timer';
 export const appSettings = {
   defaultSubscriptionLifetimeInMinutes: 10,
   renewalThreshold: 75, // The number of seconds before subscription expires it will be renewed
-  renewalTimerInterval: 20, // The number of seconds between executions of the renewal timer
+  renewalTimerInterval: 10, // The number of seconds between executions of the renewal timer
   useCanary: GraphConfig.useCanary
 };
 
