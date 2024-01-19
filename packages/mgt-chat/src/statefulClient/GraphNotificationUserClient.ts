@@ -232,9 +232,6 @@ export class GraphNotificationUserClient {
       if (subscriptions.length === 0) {
         log('No subscriptions found in session state. Creating a new subscription.');
 
-        // no reason to keep a connection if there are no subscriptions,
-        await this.closeSignalRConnection();
-
         await this.subscribeToResource(this.currentUserId, `/users/${this.currentUserId}/chats/getAllmessages`, [
           'created',
           'updated',
