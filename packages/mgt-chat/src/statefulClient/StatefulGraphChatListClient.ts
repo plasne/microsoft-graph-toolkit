@@ -1,5 +1,5 @@
 import { MessageThreadProps, ErrorBarProps, Message } from '@azure/communication-react';
-import { ActiveAccountChanged, IGraph, LoginChangedEvent, ProviderState, Providers, log } from '@microsoft/mgt-element';
+import { ActiveAccountChanged, IGraph, Providers, log } from '@microsoft/mgt-element';
 import { GraphError } from '@microsoft/microsoft-graph-client';
 import {
   AadUserConversationMember,
@@ -139,19 +139,23 @@ export interface ChatListEvent {
 class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient> {
   private readonly _notificationClient: GraphNotificationUserClient;
   private readonly _eventEmitter: ThreadEventEmitter;
-  // private readonly _cache: MessageCache;
   private _stateSubscribers: ((state: GraphChatListClient) => void)[] = [];
   private _chatListEventSubscribers: ((state: ChatListEvent) => void)[] = [];
   private readonly _graph: IGraph;
   constructor(chatThreadsPerPage: number) {
     this.updateUserInfo();
-    Providers.globalProvider.onStateChanged(this.onLoginStateChanged);
+
     Providers.globalProvider.onActiveAccountChanged(this.onActiveAccountChanged);
     this._eventEmitter = new ThreadEventEmitter();
     this.registerEventListeners();
     this._graph = graph('mgt-chat', GraphConfig.version);
     this.chatThreadsPerPage = chatThreadsPerPage;
     this._notificationClient = new GraphNotificationUserClient(this._eventEmitter, this._graph);
+
+    if (this.userId) {
+      void this.updateUserSubscription();
+      this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
+    }
   }
 
   /**
@@ -443,39 +447,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
       draft.chatThreads = chatThreads;
       draft.moreChatThreadsToLoad = nextLink !== undefined && nextLink !== '';
     });
-  };
-
-  /**
-   * Update the state of the client when the Login state changes
-   *
-   * @private
-   * @param {LoginChangedEvent} e The event that triggered the change
-   * @memberof StatefulGraphChatListClient
-   */
-  private readonly onLoginStateChanged = (e: LoginChangedEvent) => {
-    switch (e.detail) {
-      case ProviderState.SignedIn:
-        // update userId and displayName
-        this.updateUserInfo();
-        // load messages?
-        // configure subscriptions
-        // emit new state;
-        if (this.userId) {
-          void this.updateUserSubscription();
-          this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
-        }
-        return;
-      case ProviderState.SignedOut:
-        // clear userId
-        // clear subscriptions
-        // clear messages
-        // emit new state
-        return;
-      case ProviderState.Loading:
-      default:
-        // do nothing for now
-        return;
-    }
   };
 
   private readonly onActiveAccountChanged = (e: ActiveAccountChanged) => {
