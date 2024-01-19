@@ -149,7 +149,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     Providers.globalProvider.onActiveAccountChanged(this.onActiveAccountChanged);
     this._eventEmitter = new ThreadEventEmitter();
     this.registerEventListeners();
-    // this._cache = new MessageCache();
     this._graph = graph('mgt-chat', GraphConfig.version);
     this.chatThreadsPerPage = chatThreadsPerPage;
     this._notificationClient = new GraphNotificationUserClient(this._eventEmitter, this._graph);

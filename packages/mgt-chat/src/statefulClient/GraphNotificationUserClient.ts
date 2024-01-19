@@ -52,6 +52,7 @@ export class GraphNotificationUserClient {
   private renewalCount = 0;
   private isRewnewalInProgress = false;
   private userId = '';
+  private currentUserId = '';
   private get sessionId() {
     return 'default';
   }
@@ -86,7 +87,7 @@ export class GraphNotificationUserClient {
     log('cleaning up user graph notification resources');
     if (this.renewalInterval) this.timer.clearInterval(this.renewalInterval);
     this.timer.close();
-    await this.unsubscribeFromUserNotifications(this.userId, this.sessionId);
+    await this.unsubscribeFromUserNotifications(this.userId);
   }
 
   private readonly getToken = async () => {
@@ -170,19 +171,19 @@ export class GraphNotificationUserClient {
     }
   }
 
-  private readonly cacheSubscription = async (subscriptionRecord: Subscription): Promise<void> => {
+  private readonly cacheSubscription = async (userId: string, subscriptionRecord: Subscription): Promise<void> => {
     log(subscriptionRecord);
-    await this.subscriptionCache.cacheSubscription(this.userId, ComponentType.User, this.sessionId, subscriptionRecord);
+    await this.subscriptionCache.cacheSubscription(userId, ComponentType.User, this.sessionId, subscriptionRecord);
   };
 
-  private async subscribeToResource(resourcePath: string, changeTypes: ChangeTypes[]) {
+  private async subscribeToResource(userId: string, resourcePath: string, changeTypes: ChangeTypes[]) {
     // build subscription request
     const expirationDateTime = new Date(
       new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
     ).toISOString();
     const subscriptionDefinition: Subscription = {
       changeType: changeTypes.join(','),
-      notificationUrl: `${GraphConfig.webSocketsPrefix}?groupId=${this.userId}&sessionId=${this.sessionId}`,
+      notificationUrl: `${GraphConfig.webSocketsPrefix}?groupId=${userId}&sessionId=${this.sessionId}`,
       resource: resourcePath,
       expirationDateTime,
       includeResourceData: true,
@@ -198,7 +199,7 @@ export class GraphNotificationUserClient {
     if (!subscription?.notificationUrl) throw new Error('Subscription not created');
     log(subscription);
 
-    await this.cacheSubscription(subscription);
+    await this.cacheSubscription(userId, subscription);
 
     // create a connection to the web socket if one does not exist
     if (!this.connection) await this.createSignalRConnection(subscription.notificationUrl);
@@ -217,13 +218,25 @@ export class GraphNotificationUserClient {
     }
 
     this.isRewnewalInProgress = true;
+
+    if (this.currentUserId !== '' && this.currentUserId !== this.userId) {
+      log('User has changed. Unsubscribing from previous user');
+      await this.unsubscribeFromUserNotifications(this.currentUserId);
+    }
+
+    this.currentUserId = this.userId;
+
     try {
       const subscriptions =
-        (await this.subscriptionCache.loadSubscriptions(this.userId, this.sessionId))?.subscriptions || [];
+        (await this.subscriptionCache.loadSubscriptions(this.currentUserId, this.sessionId))?.subscriptions || [];
       if (subscriptions.length === 0) {
         log('No subscriptions found in session state. Creating a new subscription.');
 
-        await this.subscribeToResource(`/users/${this.userId}/chats/getAllmessages`, ['created', 'updated', 'deleted']);
+        await this.subscribeToResource(this.currentUserId, `/users/${this.currentUserId}/chats/getAllmessages`, [
+          'created',
+          'updated',
+          'deleted'
+        ]);
       } else {
         for (const subscription of subscriptions) {
           if (!subscription.expirationDateTime || !subscription.id || !subscription.notificationUrl) continue;
@@ -241,14 +254,14 @@ export class GraphNotificationUserClient {
             );
 
             try {
-              await this.renewSubscription(subscription.id, newExpirationTime.toISOString());
+              await this.renewSubscription(this.currentUserId, subscription.id, newExpirationTime.toISOString());
             } catch (e) {
               error(e);
               // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
               if ((e as { statusCode?: number }).statusCode === 404) {
                 log('Removing subscription from cache', subscription.id);
-                await this.subscriptionCache.deleteCachedSubscriptions(this.userId, this.sessionId);
-                await this.subscribeToUserNotifications(this.userId);
+                await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId, this.sessionId);
+                await this.subscribeToUserNotifications(this.currentUserId);
               }
             }
           } else {
@@ -268,12 +281,16 @@ export class GraphNotificationUserClient {
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
   };
 
-  private readonly renewSubscription = async (subscriptionId: string, expirationDateTime: string): Promise<void> => {
+  private readonly renewSubscription = async (
+    userId: string,
+    subscriptionId: string,
+    expirationDateTime: string
+  ): Promise<void> => {
     // PATCH /subscriptions/{id}
     const renewedSubscription = (await this.graph.api(`${GraphConfig.subscriptionEndpoint}/${subscriptionId}`).patch({
       expirationDateTime
     })) as Subscription;
-    return this.cacheSubscription(renewedSubscription);
+    return this.cacheSubscription(userId, renewedSubscription);
   };
 
   private async createSignalRConnection(notificationUrl: string) {
@@ -353,13 +370,13 @@ export class GraphNotificationUserClient {
     this.connection = undefined;
   }
 
-  private async unsubscribeFromUserNotifications(userId: string, sessionId: string) {
+  private async unsubscribeFromUserNotifications(userId: string) {
     await this.closeSignalRConnection();
-    const cacheData = await this.subscriptionCache.loadSubscriptions(userId, sessionId);
+    const cacheData = await this.subscriptionCache.loadSubscriptions(userId, this.sessionId);
     if (cacheData) {
       await Promise.all([
         this.removeSubscriptions(cacheData.subscriptions),
-        this.subscriptionCache.deleteCachedSubscriptions(userId, sessionId)
+        this.subscriptionCache.deleteCachedSubscriptions(userId, this.sessionId)
       ]);
     }
   }
