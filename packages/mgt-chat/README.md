@@ -90,6 +90,7 @@ export const App: React.FunctionComponent = () => {
 }
 ```
 
+
 ### Review existing samples
 
 We are providing simple apps that provides all the necessary elements to have a fully working application with our Chat Components.
