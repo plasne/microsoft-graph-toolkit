@@ -93,6 +93,7 @@ When messages are received by the Chat client either via a call to Microsoft Gra
 The nextLink is stored so that when a long conversation is loaded additional messages beyond those initially loaded can be loaded on demand due to the user scrolling the messages list, when a new next link for historical data is received the cached nextLink must be updated, including the case where no next link is received.
 
 
+
 ## Localization
 
 The `Chat` component doesn't expose any localization variables.
