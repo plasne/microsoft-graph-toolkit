@@ -1,5 +1,5 @@
 {
-  "name": "@microsoft/mgt-chat",
+  "name": "@mattbillfred/mgt-chat",
   "version": "3.0.0",
   "description": "Chat component for providing Teams conversations via a React component built using the ACS UI library",
   "main": "./dist/es6/index.js",
