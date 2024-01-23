@@ -36,7 +36,7 @@ jobs:
       - run: yarn build
 
       - run: lerna exec --scope @microsoft/* -- "npm publish --tag ${{ steps.extract_tag.outputs.tag }} --access=public"
-        if: github.repository == 'microsoftgraph/microsoft-graph-toolkit'
+        if: github.repository == 'MattBillFred/microsoft-graph-toolkit'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Upload a Build Artifact - mgt-spfx Solution
