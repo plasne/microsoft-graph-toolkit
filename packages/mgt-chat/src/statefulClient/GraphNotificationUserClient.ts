@@ -256,6 +256,9 @@ export class GraphNotificationUserClient {
                 log('Removing subscription from cache', subscription.id);
                 await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId, this.sessionId);
                 await this.subscribeToUserNotifications(this.currentUserId);
+
+                const emitter: ThreadEventEmitter | undefined = this.emitter;
+                emitter?.reconnected();
               }
             }
           } else {
