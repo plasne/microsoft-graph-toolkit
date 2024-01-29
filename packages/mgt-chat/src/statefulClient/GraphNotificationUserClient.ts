@@ -106,7 +106,7 @@ export class GraphNotificationUserClient {
     if (typeof message !== 'string') throw new Error('Expected string from receivenotificationmessageasync');
 
     const notification: ReceivedNotification = JSON.parse(message) as ReceivedNotification;
-    log('received notification message', notification);
+    log('received user notification message', notification);
     const emitter: ThreadEventEmitter | undefined = this.emitter;
     if (!notification.resourceData) throw new Error('Message did not contain resourceData');
     if (isMessageNotification(notification)) {
