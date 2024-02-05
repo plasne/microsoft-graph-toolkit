@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import {
   shorthands,
@@ -63,52 +63,67 @@ const useStyles = makeStyles({
   }
 });
 
+interface ChatListWrapperProps {
+  onSelected: (e: GraphChat) => void;
+}
+
+const ChatListWrapper = memo(({ onSelected }: ChatListWrapperProps) => {
+  console.log('memo rerendered!!!');
+
+  const buttons: ChatListButtonItem[] = [
+    {
+      renderIcon: () => <ChatAddIcon />,
+      onClick: () => console.log('on click') // setIsNewChatOpen(true)
+    }
+  ];
+  const menus: ChatListMenuItem[] = [
+    {
+      displayText: 'My custom menu item',
+      onClick: () => console.log('My custom menu item clicked')
+    }
+  ];
+  const onAllMessagesRead = useCallback((chatIds: string[]) => {
+    console.log(`Number of chats marked as read: ${chatIds.length}`);
+  }, []);
+  const onLoaded = () => {
+    console.log('Chat threads loaded.');
+  };
+  const onMessageReceived = (msg: ChatMessage) => {
+    console.log('SampleChatLog: Message received', msg);
+  };
+
+  return (
+    <ChatList
+      onLoaded={onLoaded}
+      chatThreadsPerPage={10}
+      menuItems={menus}
+      buttonItems={buttons}
+      onSelected={onSelected}
+      onMessageReceived={onMessageReceived}
+      onAllMessagesRead={onAllMessagesRead}
+    />
+  );
+});
+
 const ChatPage: React.FunctionComponent = () => {
-  const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => void }) => {
-    console.log('memo rerendered!!!');
-
-    const buttons: ChatListButtonItem[] = [
-      {
-        renderIcon: () => <ChatAddIcon />,
-        onClick: () => setIsNewChatOpen(true)
-      }
-    ];
-    const menus: ChatListMenuItem[] = [
-      {
-        displayText: 'My custom menu item',
-        onClick: () => console.log('My custom menu item clicked')
-      }
-    ];
-    const onAllMessagesRead = useCallback((chatIds: string[]) => {
-      console.log(`Number of chats marked as read: ${chatIds.length}`);
-    }, []);
-    const onLoaded = () => {
-      console.log('Chat threads loaded.');
-    };
-    const onMessageReceived = (msg: ChatMessage) => {
-      console.log('SampleChatLog: Message received', msg);
-    };
-
-    return (
-      <ChatList
-        onLoaded={onLoaded}
-        chatThreadsPerPage={10}
-        menuItems={menus}
-        buttonItems={buttons}
-        onSelected={onSelected}
-        onMessageReceived={onMessageReceived}
-        onAllMessagesRead={onAllMessagesRead}
-      />
-    );
-  });
-
   const styles = useStyles();
   const [chatId, setChatId] = React.useState<string>('');
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
 
-  const chatSelected = useCallback((e: GraphChat) => {
+  /*
+  const onChatSelected = useCallback((e: GraphChat) => {
     setChatId(e.id ?? '');
   }, []);
+  */
+  const onChatSelected = React.useCallback((e: GraphChat) => {
+    setChatId(e.id ?? '');
+  }, []);
+
+  /*
+  const onChatSelected = (e: GraphChat) => {
+    setChatId(e.id ?? '');
+  };
+  */
 
   const onChatCreated = (e: GraphChat) => {
     if (e.id !== chatId && isNewChatOpen) {
@@ -136,9 +151,9 @@ const ChatPage: React.FunctionComponent = () => {
               </DialogSurface>
             </Dialog>
           </div>
-          <ChatListWrapper onSelected={chatSelected} />
+          <ChatListWrapper onSelected={onChatSelected} />
         </div>
-        {/* <div className={styles.side}>{<Chat chatId={chatId} />}</div> */}
+        {<div className={styles.side}>{<Chat chatId={chatId} />}</div>}
       </div>
     </>
   );
