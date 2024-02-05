@@ -153,7 +153,7 @@ const ChatPage: React.FunctionComponent = () => {
           </div>
           <ChatListWrapper onSelected={onChatSelected} />
         </div>
-        {<div className={styles.side}>{<Chat chatId={chatId} />}</div>}
+        <div className={styles.side}>{<Chat chatId={chatId} />}</div>
       </div>
     </>
   );
