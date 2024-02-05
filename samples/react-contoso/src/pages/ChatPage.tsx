@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { memo, useCallback, useEffect } from 'react';
+import { memo, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import {
   shorthands,
@@ -68,12 +68,10 @@ interface ChatListWrapperProps {
 }
 
 const ChatListWrapper = memo(({ onSelected }: ChatListWrapperProps) => {
-  console.log('memo rerendered!!!');
-
   const buttons: ChatListButtonItem[] = [
     {
       renderIcon: () => <ChatAddIcon />,
-      onClick: () => console.log('on click') // setIsNewChatOpen(true)
+      onClick: () => console.log('on click')
     }
   ];
   const menus: ChatListMenuItem[] = [
@@ -110,20 +108,9 @@ const ChatPage: React.FunctionComponent = () => {
   const [chatId, setChatId] = React.useState<string>('');
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
 
-  /*
-  const onChatSelected = useCallback((e: GraphChat) => {
-    setChatId(e.id ?? '');
-  }, []);
-  */
   const onChatSelected = React.useCallback((e: GraphChat) => {
     setChatId(e.id ?? '');
   }, []);
-
-  /*
-  const onChatSelected = (e: GraphChat) => {
-    setChatId(e.id ?? '');
-  };
-  */
 
   const onChatCreated = (e: GraphChat) => {
     if (e.id !== chatId && isNewChatOpen) {
@@ -153,7 +140,9 @@ const ChatPage: React.FunctionComponent = () => {
           </div>
           <ChatListWrapper onSelected={onChatSelected} />
         </div>
-        <div className={styles.side}>{<Chat chatId={chatId} />}</div>
+        <div className={styles.side}>
+          <Chat chatId={chatId} />
+        </div>
       </div>
     </>
   );
