@@ -65,13 +65,15 @@ const useStyles = makeStyles({
 
 interface ChatListWrapperProps {
   onSelected: (e: GraphChat) => void;
+  onNewChat: () => void;
+  selectedChatId: string | undefined;
 }
 
-const ChatListWrapper = memo(({ onSelected }: ChatListWrapperProps) => {
+const ChatListWrapper = memo(({ onSelected, onNewChat, selectedChatId }: ChatListWrapperProps) => {
   const buttons: ChatListButtonItem[] = [
     {
       renderIcon: () => <ChatAddIcon />,
-      onClick: () => console.log('on click')
+      onClick: onNewChat
     }
   ];
   const menus: ChatListMenuItem[] = [
@@ -83,15 +85,16 @@ const ChatListWrapper = memo(({ onSelected }: ChatListWrapperProps) => {
   const onAllMessagesRead = useCallback((chatIds: string[]) => {
     console.log(`Number of chats marked as read: ${chatIds.length}`);
   }, []);
-  const onLoaded = () => {
+  const onLoaded = useCallback(() => {
     console.log('Chat threads loaded.');
-  };
-  const onMessageReceived = (msg: ChatMessage) => {
+  }, []);
+  const onMessageReceived = useCallback((msg: ChatMessage) => {
     console.log('SampleChatLog: Message received', msg);
-  };
+  }, []);
 
   return (
     <ChatList
+      selectedChatId={selectedChatId}
       onLoaded={onLoaded}
       chatThreadsPerPage={10}
       menuItems={menus}
@@ -109,14 +112,20 @@ const ChatPage: React.FunctionComponent = () => {
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
 
   const onChatSelected = React.useCallback((e: GraphChat) => {
-    setChatId(e.id ?? '');
+    if (chatId !== e.id) {
+      setChatId(e.id ?? '');
+    }
+  }, []);
+
+  const onNewChat = React.useCallback(() => {
+    setIsNewChatOpen(true);
   }, []);
 
   const onChatCreated = (e: GraphChat) => {
-    if (e.id !== chatId && isNewChatOpen) {
-      setIsNewChatOpen(false);
+    setIsNewChatOpen(false);
+    if (chatId !== e.id) {
+      setChatId(e.id ?? '');
     }
-    setChatId(e.id ?? '');
   };
 
   return (
@@ -138,7 +147,7 @@ const ChatPage: React.FunctionComponent = () => {
               </DialogSurface>
             </Dialog>
           </div>
-          <ChatListWrapper onSelected={onChatSelected} />
+          <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />
         </div>
         <div className={styles.side}>
           <Chat chatId={chatId} />
