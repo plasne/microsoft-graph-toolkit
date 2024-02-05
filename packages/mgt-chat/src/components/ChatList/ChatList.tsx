@@ -207,11 +207,6 @@ export const ChatList = ({
 
   const chatListButtonItems = props.buttonItems === undefined ? [] : props.buttonItems;
 
-  // We need to have a function for "this" to work within the loadMoreChatThreads function, otherwise we get a undefined error.
-  const loadMore = () => {
-    chatListClient?.loadMoreChatThreads();
-  };
-
   const markAllThreadsAsRead = (chatThreads: GraphChat[] | undefined) => {
     if (!chatThreads) {
       return;
@@ -237,6 +232,26 @@ export const ChatList = ({
 
   const isError = ['server connection lost', 'error'].includes(chatListState?.status ?? '');
 
+  const handleScroll = (event: React.WheelEvent<HTMLDivElement>) => {
+    // invoked when scroll down to the bottom of the chat list
+    if (
+      event.deltaY > 0 &&
+      event.currentTarget.scrollTop + event.currentTarget.clientHeight >= event.currentTarget.scrollHeight &&
+      chatListState?.moreChatThreadsToLoad === true
+    ) {
+      console.log(
+        'top:' +
+          event.currentTarget.scrollTop +
+          ' clientHeight:' +
+          event.currentTarget.clientHeight +
+          ' scrollHeight:' +
+          event.currentTarget.scrollHeight
+      );
+
+      chatListClient?.loadMoreChatThreads();
+    }
+  };
+
   return (
     <FluentThemeProvider fluentTheme={FluentTheme}>
       <FluentProvider theme={webLightTheme} className={styles.fullHeight}>
@@ -252,7 +267,7 @@ export const ChatList = ({
           )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
             <>
-              <div>
+              <div onWheel={handleScroll}>
                 {chatListState?.chatThreads.map(c => (
                   <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
                     <ChatListItem
@@ -264,13 +279,6 @@ export const ChatList = ({
                     />
                   </Button>
                 ))}
-                {chatListState?.moreChatThreadsToLoad === true && (
-                  <div className={styles.linkContainer}>
-                    <Link onClick={loadMore} href="#" className={styles.loadMore}>
-                      load more
-                    </Link>
-                  </div>
-                )}
               </div>
             </>
           ) : (
