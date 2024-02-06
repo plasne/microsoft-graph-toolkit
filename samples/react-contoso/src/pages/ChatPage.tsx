@@ -112,14 +112,11 @@ const ChatPage: React.FunctionComponent = () => {
   const [chatId, setChatId] = React.useState<string>('');
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
 
-  const onChatSelected = React.useCallback(
-    (e: GraphChat) => {
-      if (chatId !== e.id) {
-        setChatId(e.id ?? '');
-      }
-    },
-    [chatId]
-  );
+  const onChatSelected = React.useCallback((e: GraphChat) => {
+    if (chatId !== e.id) {
+      setChatId(e.id ?? '');
+    }
+  }, []);
 
   const onNewChat = React.useCallback(() => {
     setIsNewChatOpen(true);
