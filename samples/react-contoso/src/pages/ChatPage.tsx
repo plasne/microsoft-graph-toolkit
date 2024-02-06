@@ -85,9 +85,9 @@ const ChatListWrapper = memo(({ onSelected, onNewChat, selectedChatId }: ChatLis
   const onAllMessagesRead = useCallback((chatIds: string[]) => {
     console.log(`Number of chats marked as read: ${chatIds.length}`);
   }, []);
-  const onLoaded = useCallback((num_chats: number) => {
-    console.log(num_chats, ' total chat threads loaded.');
-    return num_chats;
+  const onLoaded = useCallback((numChats: number) => {
+    console.log(numChats, ' total chat threads loaded.');
+    return numChats;
   }, []);
   const onMessageReceived = useCallback((msg: ChatMessage) => {
     console.log('SampleChatLog: Message received', msg);
