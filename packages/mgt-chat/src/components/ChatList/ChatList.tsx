@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChatListItem } from '../ChatListItem/ChatListItem';
 import { MgtTemplateProps, ProviderState, Providers, Spinner, log } from '@microsoft/mgt-react';
-import { makeStyles, Button, Link, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
+import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
 import { FluentThemeProvider } from '@azure/communication-react';
 import { FluentTheme } from '@fluentui/react';
 import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
@@ -28,6 +28,7 @@ export interface IChatListItemProps {
   chatThreadsPerPage: number;
   lastReadTimeInterval?: number;
   selectedChatId?: string;
+  scrollHeight?: number;
   onMessageReceived?: (msg: ChatMessage) => void;
 }
 
@@ -232,23 +233,34 @@ export const ChatList = ({
 
   const isError = ['server connection lost', 'error'].includes(chatListState?.status ?? '');
 
-  const handleScroll = (event: React.WheelEvent<HTMLDivElement>) => {
-    // invoked when scroll down to the bottom of the chat list
-    if (
-      event.deltaY > 0 &&
-      event.currentTarget.scrollTop + event.currentTarget.clientHeight >= event.currentTarget.scrollHeight &&
-      chatListState?.moreChatThreadsToLoad === true
-    ) {
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    const control = event.currentTarget;
+    if (control) {
+      console.log('scroll: clientHeight:' + control.clientHeight + ' scrollHeight:' + control.scrollHeight);
+
+      // invoked when scroll down to the bottom of the chat list
+      if (control.scrollTop + control.clientHeight > control.scrollHeight) {
+        chatListClient?.loadMoreChatThreads();
+      }
+    }
+  };
+
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    const control = event.currentTarget;
+    if (control) {
       console.log(
-        'top:' +
-          event.currentTarget.scrollTop +
+        'wheel: top:' +
+          control.scrollTop +
           ' clientHeight:' +
-          event.currentTarget.clientHeight +
+          control.clientHeight +
           ' scrollHeight:' +
-          event.currentTarget.scrollHeight
+          control.scrollHeight
       );
 
-      chatListClient?.loadMoreChatThreads();
+      // invoked when scroll down to the bottom of the chat list
+      if (event.deltaY > 0 && control.scrollTop + control.clientHeight > control.scrollHeight) {
+        chatListClient?.loadMoreChatThreads();
+      }
     }
   };
 
@@ -266,21 +278,19 @@ export const ChatList = ({
             </div>
           )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
-            <>
-              <div onWheel={handleScroll}>
-                {chatListState?.chatThreads.map(c => (
-                  <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
-                    <ChatListItem
-                      key={c.id}
-                      chat={c}
-                      myId={chatListState.userId}
-                      isSelected={c.id === internalSelectedChatId}
-                      isRead={c.id === internalSelectedChatId || c.isRead}
-                    />
-                  </Button>
-                ))}
-              </div>
-            </>
+            <div style={{ height: '500px', overflowY: 'auto' }} onScroll={handleScroll} onWheel={handleWheel}>
+              {chatListState?.chatThreads.map(c => (
+                <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
+                  <ChatListItem
+                    key={c.id}
+                    chat={c}
+                    myId={chatListState.userId}
+                    isSelected={c.id === internalSelectedChatId}
+                    isRead={c.id === internalSelectedChatId || c.isRead}
+                  />
+                </Button>
+              ))}
+            </div>
           ) : (
             <>
               <div className={styles.error}>
