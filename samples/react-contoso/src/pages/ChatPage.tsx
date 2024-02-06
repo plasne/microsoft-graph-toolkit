@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { memo, useCallback } from 'react';
+import { memo, useCallback } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import {
   shorthands,
@@ -10,6 +11,16 @@ import {
   DialogBody,
   DialogTitle
 } from '@fluentui/react-components';
+import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
+import { ChatList, Chat, NewChat, ChatListButtonItem, ChatListMenuItem } from '@microsoft/mgt-chat';
+import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
+
+const ChatAddIconBundle = bundleIcon(Compose24Filled, Compose24Regular);
+
+export const ChatAddIcon = (): JSX.Element => {
+  const iconColor = 'var(--colorBrandForeground2)';
+  return <ChatAddIconBundle color={iconColor} />;
+};
 import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
 import { ChatList, Chat, NewChat, ChatListButtonItem, ChatListMenuItem } from '@microsoft/mgt-chat';
 import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
@@ -121,6 +132,16 @@ const ChatPage: React.FunctionComponent = () => {
     setIsNewChatOpen(true);
   }, []);
 
+  const onChatSelected = React.useCallback((e: GraphChat) => {
+    if (chatId !== e.id) {
+      setChatId(e.id ?? '');
+    }
+  }, []);
+
+  const onNewChat = React.useCallback(() => {
+    setIsNewChatOpen(true);
+  }, []);
+
   const onChatCreated = (e: GraphChat) => {
     setIsNewChatOpen(false);
     if (chatId !== e.id) {
@@ -143,10 +164,15 @@ const ChatPage: React.FunctionComponent = () => {
                 <DialogBody className={styles.dialog}>
                   <DialogTitle>New Chat</DialogTitle>
                   <NewChat onChatCreated={onChatCreated} onCancelClicked={() => setIsNewChatOpen(false)}></NewChat>
+                  <NewChat onChatCreated={onChatCreated} onCancelClicked={() => setIsNewChatOpen(false)}></NewChat>
                 </DialogBody>
               </DialogSurface>
             </Dialog>
           </div>
+          <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />
+        </div>
+        <div className={styles.side}>
+          <Chat chatId={chatId} />
           <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />
         </div>
         <div className={styles.side}>
