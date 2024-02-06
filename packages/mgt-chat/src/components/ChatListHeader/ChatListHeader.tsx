@@ -6,8 +6,9 @@ import { ChatListButtonItem } from './ChatListButtonItem';
 import { Circle } from '../Circle/Circle';
 
 const useStyles = makeStyles({
-  headerContainer: {
-    width: '100%'
+  chatListHeader: {
+    width: '100%',
+    zIndex: 3
   },
   controlsContainer: {
     display: 'flex',
@@ -57,7 +58,7 @@ export const ChatListHeader = (
 
   const buttonItems: ChatListButtonItem[] = props.buttonItems === undefined ? [] : props.buttonItems;
   return (
-    <div className={classes.headerContainer}>
+    <div className={classes.chatListHeader}>
       {props.bannerMessage !== '' && <div className={classes.bannerClassName}>{props.bannerMessage}</div>}
       <div className={classes.controlsContainer}>
         <div>

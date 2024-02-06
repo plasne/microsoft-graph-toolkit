@@ -51,9 +51,7 @@ const useStyles = makeStyles({
   chatListItem: {
     display: 'flex',
     alignItems: 'center',
-    width: '100%',
-    paddingRight: '10px',
-    paddingLeft: '10px'
+    width: '100%'
   },
 
   profileImage: {

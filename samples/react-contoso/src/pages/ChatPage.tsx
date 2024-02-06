@@ -60,7 +60,7 @@ const useStyles = makeStyles({
   },
   dialogSurface: {
     contain: 'unset'
-  }
+  },
 });
 
 interface ChatListWrapperProps {

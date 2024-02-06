@@ -28,11 +28,18 @@ export interface IChatListItemProps {
   chatThreadsPerPage: number;
   lastReadTimeInterval?: number;
   selectedChatId?: string;
-  scrollHeight?: number;
   onMessageReceived?: (msg: ChatMessage) => void;
 }
 
 const useStyles = makeStyles({
+  chatList: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    ...shorthands.overflow('auto'),
+    paddingBlockEnd: '12px',
+    backgroundColor: 'var(--Neutral-Background-2-Rest, #FAFAFA)'
+  },
   fullHeight: {
     height: '100%'
   },
@@ -54,20 +61,20 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: '100%'
   },
-  loadMore: {
-    textDecorationLine: 'none',
-    fontSize: '1.2em',
-    fontWeight: 'bold',
-    '&:hover': {
-      textDecorationLine: 'none' // This removes the underline when hovering
-    }
+  chatThreads: {
+    height: '100%',
+    ...shorthands.paddingInline('20px'),
+    ...shorthands.overflow('auto'),
+    paddingInlineStart: '10px'
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
     ...shorthands.padding('0px'),
-    ...shorthands.border('none')
+    ...shorthands.border('none'),
+    paddingLeft: 0,
+    paddingRight: 0
   },
   error: {
     display: 'flex',
@@ -137,20 +144,17 @@ export const ChatList = ({
       return;
     }
 
-    // handle events emitted from the chat list client
-    const handleChatListEvent = (event: ChatListEvent) => {
-      if (event.type === 'chatMessageReceived') {
-        if (onMessageReceived) {
-          onMessageReceived(event.message);
-        }
-      }
-    };
-
     // handle state changes
     chatListClient.onStateChange(setChatListState);
     chatListClient.onStateChange(state => {
       if (state.status === 'chats loaded' && onLoaded) {
         onLoaded(chatListState?.chatThreads.length ?? 0);
+      }
+
+      if (state.status === 'chat message received') {
+        if (onMessageReceived) {
+          onMessageReceived(state.chatThreads[0]);
+        }
       }
 
       if (state.status === 'server connection established') {
@@ -167,15 +171,11 @@ export const ChatList = ({
       }
     });
 
-    // handle chat list events
-    chatListClient.onChatListEvent(handleChatListEvent);
-
     // tear down
     return () => {
       // log state of chatlistclient for debugging purposes
       log(chatListClient.getState());
       chatListClient.offStateChange(setChatListState);
-      chatListClient.offChatListEvent(handleChatListEvent);
       chatListClient.tearDown();
       setHeaderBannerMessage('We ran into a problem. Please close or refresh.');
     };
@@ -236,30 +236,25 @@ export const ChatList = ({
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
     const control = event.currentTarget;
     if (control) {
-      console.log('scroll: clientHeight:' + control.clientHeight + ' scrollHeight:' + control.scrollHeight);
-
       // invoked when scroll down to the bottom of the chat list
-      if (control.scrollTop + control.clientHeight > control.scrollHeight) {
+      if (control.scrollTop + control.clientHeight === control.scrollHeight) {
+        console.log('scroll event triggered. Loading more chat threads.');
         chatListClient?.loadMoreChatThreads();
       }
     }
   };
 
+  const [disable, setDisable] = useState(false);
   const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
     const control = event.currentTarget;
     if (control) {
-      console.log(
-        'wheel: top:' +
-          control.scrollTop +
-          ' clientHeight:' +
-          control.clientHeight +
-          ' scrollHeight:' +
-          control.scrollHeight
-      );
-
       // invoked when scroll down to the bottom of the chat list
-      if (event.deltaY > 0 && control.scrollTop + control.clientHeight > control.scrollHeight) {
-        chatListClient?.loadMoreChatThreads();
+      if (event.deltaY > 0) {
+        if (control.scrollTop + control.clientHeight >= control.scrollHeight && !disable) {
+          console.log('wheel event triggered. Loading more chat threads.');
+          chatListClient?.loadMoreChatThreads();
+          setDisable(true);
+        }
       }
     }
   };
@@ -267,7 +262,7 @@ export const ChatList = ({
   return (
     <FluentThemeProvider fluentTheme={FluentTheme}>
       <FluentProvider theme={webLightTheme} className={styles.fullHeight}>
-        <div className={styles.fullHeight}>
+        <div className={styles.chatList}>
           {Providers.globalProvider?.state === ProviderState.SignedIn && (
             <div className={styles.headerContainer}>
               <ChatListHeader
@@ -278,7 +273,7 @@ export const ChatList = ({
             </div>
           )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
-            <div style={{ height: '500px', overflowY: 'auto' }} onScroll={handleScroll} onWheel={handleWheel}>
+            <div className={styles.chatThreads} onScroll={handleScroll} onWheel={handleWheel}>
               {chatListState?.chatThreads.map(c => (
                 <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
                   <ChatListItem
@@ -290,6 +285,7 @@ export const ChatList = ({
                   />
                 </Button>
               ))}
+              {chatListState?.moreChatThreadsToLoad && <div>&nbsp;</div>}
             </div>
           ) : (
             <>
