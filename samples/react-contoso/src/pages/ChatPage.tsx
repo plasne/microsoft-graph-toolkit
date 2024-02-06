@@ -13,6 +13,7 @@ import {
 import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
 import { ChatList, Chat, NewChat, ChatListButtonItem, ChatListMenuItem } from '@microsoft/mgt-chat';
 import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
+import { GraphChatThread } from '../../../../packages/mgt-chat/src/statefulClient/StatefulGraphChatListClient';
 
 const ChatAddIconBundle = bundleIcon(Compose24Filled, Compose24Regular);
 
@@ -85,9 +86,8 @@ const ChatListWrapper = memo(({ onSelected, onNewChat, selectedChatId }: ChatLis
   const onAllMessagesRead = useCallback((chatIds: string[]) => {
     console.log(`Number of chats marked as read: ${chatIds.length}`);
   }, []);
-  const onLoaded = useCallback((numChats: number) => {
-    console.log(numChats, ' total chat threads loaded.');
-    return numChats;
+  const onLoaded = useCallback((chatThreads: GraphChatThread[]) => {
+    console.log(chatThreads.length, ' total chat threads loaded.');
   }, []);
   const onMessageReceived = useCallback((msg: ChatMessage) => {
     console.log('SampleChatLog: Message received', msg);
@@ -112,11 +112,14 @@ const ChatPage: React.FunctionComponent = () => {
   const [chatId, setChatId] = React.useState<string>('');
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
 
-  const onChatSelected = React.useCallback((e: GraphChat) => {
-    if (chatId !== e.id) {
-      setChatId(e.id ?? '');
-    }
-  }, []);
+  const onChatSelected = React.useCallback(
+    (e: GraphChat) => {
+      if (chatId !== e.id) {
+        setChatId(e.id ?? '');
+      }
+    },
+    [chatId]
+  );
 
   const onNewChat = React.useCallback(() => {
     setIsNewChatOpen(true);
