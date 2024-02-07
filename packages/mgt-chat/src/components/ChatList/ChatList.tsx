@@ -54,14 +54,6 @@ const useStyles = makeStyles({
     alignItems: 'center',
     height: '100%'
   },
-  loadMore: {
-    textDecorationLine: 'none',
-    fontSize: '1.2em',
-    fontWeight: 'bold',
-    '&:hover': {
-      textDecorationLine: 'none' // This removes the underline when hovering
-    }
-  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -202,11 +194,6 @@ export const ChatList = ({
 
   const chatListButtonItems = props.buttonItems === undefined ? [] : props.buttonItems;
 
-  // We need to have a function for "this" to work within the loadMoreChatThreads function, otherwise we get a undefined error.
-  const loadMore = () => {
-    chatListClient?.loadMoreChatThreads();
-  };
-
   const markAllThreadsAsRead = (chatThreads: GraphChat[] | undefined) => {
     if (!chatThreads) {
       return;
@@ -259,13 +246,6 @@ export const ChatList = ({
                     />
                   </Button>
                 ))}
-                {chatListState?.moreChatThreadsToLoad === true && (
-                  <div className={styles.linkContainer}>
-                    <Link onClick={loadMore} href="#" className={styles.loadMore}>
-                      load more
-                    </Link>
-                  </div>
-                )}
               </div>
             </>
           ) : (
