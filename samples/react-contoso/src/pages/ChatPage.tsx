@@ -24,7 +24,8 @@ export const ChatAddIcon = (): JSX.Element => {
 const useStyles = makeStyles({
   container: {
     display: 'flex',
-    flexDirection: 'row'
+    flexDirection: 'row',
+    height: '75vh'
   },
   panels: {
     ...shorthands.padding('10px')
