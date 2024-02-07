@@ -257,6 +257,7 @@ export class GraphNotificationUserClient {
             try {
               await this.renewSubscription(this.currentUserId, subscription.id, newExpirationTime.toISOString());
             } catch (e) {
+              error(e);
               // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
               if ((e as { statusCode?: number }).statusCode === 404) {
                 log('Removing subscription from cache', subscription.id);
