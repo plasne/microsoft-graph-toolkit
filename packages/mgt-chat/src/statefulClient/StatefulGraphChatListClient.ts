@@ -346,9 +346,10 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this.notifyStateChange((draft: GraphChatListClient) => {
       // find the chat thread
       const chatThreadIndex = draft.chatThreads.findIndex(c => c.id === event.message.chatId);
-      const chatThread = draft.chatThreads[chatThreadIndex];
+      const chatThread = chatThreadIndex > -1 ? draft.chatThreads[chatThreadIndex] : undefined;
 
       if (
+        chatThread &&
         event.message.lastModifiedDateTime &&
         chatThread.lastMessagePreview?.createdDateTime &&
         event.message.lastModifiedDateTime < chatThread.lastMessagePreview.createdDateTime
@@ -360,7 +361,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
       // func to bring the chat thread to the top of the list
       const bringToTop = (newThread?: GraphChatThread) => {
         draft.chatThreads.splice(chatThreadIndex, 1);
-        draft.chatThreads.unshift(newThread ?? chatThread);
+        if (newThread) {
+          draft.chatThreads.unshift(newThread);
+        } else if (chatThread) {
+          draft.chatThreads.unshift(chatThread);
+        }
       };
 
       // handle the events

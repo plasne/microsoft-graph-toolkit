@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ChatListItem } from '../ChatListItem/ChatListItem';
 import { MgtTemplateProps, ProviderState, Providers, Spinner, log } from '@microsoft/mgt-react';
-import { makeStyles, Button, Link, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
+import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
 import { FluentThemeProvider } from '@azure/communication-react';
 import { FluentTheme } from '@fluentui/react';
 import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
@@ -32,20 +32,20 @@ export interface IChatListItemProps {
 }
 
 const useStyles = makeStyles({
+  chatList: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    ...shorthands.overflow('auto'),
+    paddingBlockEnd: '12px'
+  },
+  chatListItems: {
+    height: 'auto',
+    ...shorthands.paddingInline('20px'),
+    ...shorthands.overflow('auto')
+  },
   fullHeight: {
     height: '100%'
-  },
-  headerContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    width: '100%',
-    ...shorthands.padding('10px')
-  },
-  linkContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    width: '100%',
-    ...shorthands.padding('10px')
   },
   spinner: {
     justifyContent: 'center',
@@ -64,6 +64,10 @@ const useStyles = makeStyles({
     display: 'flex',
     justifyContent: 'center',
     height: '100%'
+  },
+  bottomWhitespace: {
+    height: '80%',
+    width: '100%'
   }
 });
 
@@ -217,23 +221,48 @@ export const ChatList = ({
   ].includes(chatListState?.status ?? '');
 
   const isError = ['server connection lost', 'error'].includes(chatListState?.status ?? '');
+  const targetElementRef = useRef(null);
+
+  useEffect(() => {
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry: IntersectionObserverEntry) => {
+        // Check if the element is intersecting
+        if (entry.isIntersecting) {
+          // The element has come into view, you can perform your actions here
+          if (chatListState?.moreChatThreadsToLoad) {
+            chatListClient?.loadMoreChatThreads();
+          }
+        }
+      });
+    };
+    // Create a new Intersection Observer instance
+    const observer = new IntersectionObserver(handleIntersection, {
+      root: null, // observing intersections with the viewport
+      rootMargin: '0px',
+      threshold: 0.1 // Callback is invoked when 10% of the target is visible
+    });
+
+    if (targetElementRef.current) {
+      observer.observe(targetElementRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [chatListState]);
 
   return (
     <FluentThemeProvider fluentTheme={FluentTheme}>
       <FluentProvider theme={webLightTheme} className={styles.fullHeight}>
-        <div className={styles.fullHeight}>
+        <div className={styles.chatList}>
           {Providers.globalProvider?.state === ProviderState.SignedIn && (
-            <div className={styles.headerContainer}>
-              <ChatListHeader
-                bannerMessage={headerBannerMessage}
-                buttonItems={chatListButtonItems}
-                menuItems={[markAllAsRead, ...(props.menuItems ?? [])]}
-              />
-            </div>
+            <ChatListHeader
+              bannerMessage={headerBannerMessage}
+              buttonItems={chatListButtonItems}
+              menuItems={[markAllAsRead, ...(props.menuItems ?? [])]}
+            />
           )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
             <>
-              <div>
+              <div className={styles.chatListItems}>
                 {chatListState?.chatThreads.map(c => (
                   <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
                     <ChatListItem
@@ -245,6 +274,11 @@ export const ChatList = ({
                     />
                   </Button>
                 ))}
+                {chatListState?.moreChatThreadsToLoad && (
+                  <div ref={targetElementRef} className={styles.bottomWhitespace}>
+                    &nbsp;
+                  </div>
+                )}
               </div>
             </>
           ) : (

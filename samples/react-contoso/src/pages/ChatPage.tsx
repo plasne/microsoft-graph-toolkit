@@ -4,7 +4,6 @@ import { PageHeader } from '../components/PageHeader';
 import {
   shorthands,
   makeStyles,
-  mergeClasses,
   Dialog,
   DialogSurface,
   DialogBody,
@@ -135,19 +134,18 @@ const ChatPage: React.FunctionComponent = () => {
         title={'Chats'}
         description={'Stay in touch with your teammates and navigate your chats'}
       ></PageHeader>
-
       <div className={styles.container}>
-        <div className={mergeClasses(styles.panels, styles.main)}>
-          <div className={styles.newChat}>
-            <Dialog open={isNewChatOpen}>
-              <DialogSurface className={styles.dialogSurface}>
-                <DialogBody className={styles.dialog}>
-                  <DialogTitle>New Chat</DialogTitle>
-                  <NewChat onChatCreated={onChatCreated} onCancelClicked={() => setIsNewChatOpen(false)}></NewChat>
-                </DialogBody>
-              </DialogSurface>
-            </Dialog>
-          </div>
+        <div className={styles.newChat}>
+          <Dialog open={isNewChatOpen}>
+            <DialogSurface className={styles.dialogSurface}>
+              <DialogBody className={styles.dialog}>
+                <DialogTitle>New Chat</DialogTitle>
+                <NewChat onChatCreated={onChatCreated} onCancelClicked={() => setIsNewChatOpen(false)}></NewChat>
+              </DialogBody>
+            </DialogSurface>
+          </Dialog>
+        </div>
+        <div className={styles.side}>
           <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />
         </div>
         <div className={styles.side}>
