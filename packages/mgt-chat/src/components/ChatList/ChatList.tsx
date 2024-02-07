@@ -8,7 +8,6 @@ import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types
 import {
   StatefulGraphChatListClient,
   GraphChatListClient,
-  ChatListEvent,
   GraphChatThread
 } from '../../statefulClient/StatefulGraphChatListClient';
 import { ChatListHeader } from '../ChatListHeader/ChatListHeader';
