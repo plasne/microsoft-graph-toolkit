@@ -25,22 +25,7 @@ const useStyles = makeStyles({
   container: {
     display: 'flex',
     flexDirection: 'row',
-    height: '75vh'
-  },
-  panels: {
-    ...shorthands.padding('10px')
-  },
-  main: {
-    display: 'flex',
-    flexDirection: 'column',
-    flexWrap: 'nowrap',
-    width: '300px',
-    minWidth: '300px',
-    ...shorthands.overflow('auto'),
-    maxHeight: '80vh',
-    borderRightColor: 'var(--neutral-stroke-rest)',
-    borderRightStyle: 'solid',
-    borderRightWidth: '1px'
+    height: '79vh'
   },
   side: {
     display: 'flex',

@@ -40,7 +40,7 @@ const useStyles = makeStyles({
     paddingBlockEnd: '12px'
   },
   chatListItems: {
-    height: 'auto',
+    height: '100%',
     ...shorthands.paddingInline('20px'),
     ...shorthands.overflow('auto')
   },
