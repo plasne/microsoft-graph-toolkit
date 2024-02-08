@@ -50,11 +50,12 @@ const useStyles = makeStyles({
       ...shorthands.overflow('auto'),
       scrollbarWidth: 'auto'
     },
-    '&:hover:-webkit-scrollbar': {
+    '&:hover::-webkit-scrollbar': {
       width: '15px'
     },
-    '&:hover:-webkit-scrollbar-thumb': {
-      backgroundColor: 'darkgrey'
+    '&:hover::-webkit-scrollbar-thumb': {
+      backgroundColor: 'darkgrey',
+      'border-radius': '10px'
     }
   },
   fullHeight: {
