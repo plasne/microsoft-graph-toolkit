@@ -86,7 +86,7 @@ export const ChatList = ({
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [internalSelectedChatId, setInternalSelectedChatId] = useState<string | undefined>();
-
+  const loadingRef = useRef(false);
   // wait for provider to be ready before setting client and state
   useEffect(() => {
     const provider = Providers.globalProvider;
@@ -143,6 +143,8 @@ export const ChatList = ({
 
       if (state.status === 'chats loaded' && onLoaded) {
         onLoaded(state?.chatThreads ?? []);
+        // the loadingRef is used to prevent multiple calls to loadMoreChatThreads
+        loadingRef.current = false;
       }
 
       if (state.status === 'no chats' && onLoaded) {
@@ -224,16 +226,19 @@ export const ChatList = ({
   const targetElementRef = useRef(null);
 
   useEffect(() => {
-    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry: IntersectionObserverEntry) => {
-        // Check if the element is intersecting
+    const handleIntersection = async (entries: IntersectionObserverEntry[]) => {
+      for (const entry of entries) {
         if (entry.isIntersecting) {
           // The element has come into view, you can perform your actions here
-          if (chatListState?.moreChatThreadsToLoad) {
-            chatListClient?.loadMoreChatThreads();
+          if (!loadingRef.current) {
+            // Prevent the function from being called multiple times
+            if (chatListState?.moreChatThreadsToLoad) {
+              loadingRef.current = true;
+              await chatListClient?.loadMoreChatThreads();
+            }
           }
         }
-      });
+      }
     };
     // Create a new Intersection Observer instance
     const observer = new IntersectionObserver(handleIntersection, {
