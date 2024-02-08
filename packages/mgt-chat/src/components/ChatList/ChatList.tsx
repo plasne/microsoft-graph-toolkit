@@ -43,7 +43,7 @@ const useStyles = makeStyles({
     height: '100%',
     ...shorthands.paddingInline('20px'),
     '&': {
-      paddingRight: '15px' // reserved some space for the scrollbar
+      paddingRight: '8px' // reserved some space for the scrollbar
     },
     '&:hover': {
       paddingRight: '0', // we got the scrollbar, no need to reserve space
@@ -51,11 +51,11 @@ const useStyles = makeStyles({
       scrollbarWidth: 'auto'
     },
     '&:hover::-webkit-scrollbar': {
-      width: '15px'
+      width: '8px'
     },
     '&:hover::-webkit-scrollbar-thumb': {
       backgroundColor: 'darkgrey',
-      'border-radius': '10px'
+      'border-radius': '5px'
     }
   },
   fullHeight: {
