@@ -10,6 +10,7 @@ import {
   GraphChatListClient,
   GraphChatThread
 } from '../../statefulClient/StatefulGraphChatListClient';
+import { GraphNotificationUserClientError } from '../../statefulClient/ThreadEventEmitter';
 import { ChatListHeader } from '../ChatListHeader/ChatListHeader';
 import { IChatListMenuItemsProps } from '../ChatListHeader/EllipsisMenu';
 import { ChatListButtonItem } from '../ChatListHeader/ChatListButtonItem';
@@ -23,6 +24,7 @@ export interface IChatListItemProps {
   onSelected: (e: GraphChat) => void;
   onUnselected?: (e: GraphChat) => void;
   onLoaded?: (e: GraphChatThread[]) => void;
+  onError?: (e: GraphNotificationUserClientError) => void;
   onAllMessagesRead: (e: string[]) => void;
   buttonItems?: ChatListButtonItem[];
   chatThreadsPerPage: number;
@@ -92,6 +94,7 @@ export const ChatList = ({
   onMessageReceived,
   onAllMessagesRead,
   onLoaded,
+  onError,
   chatThreadsPerPage,
   ...props
 }: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
@@ -152,6 +155,12 @@ export const ChatList = ({
       if (state.status === 'chat message received') {
         if (onMessageReceived && state.chatMessage) {
           onMessageReceived(state.chatMessage);
+        }
+      }
+
+      if (state.status === 'error') {
+        if (onError && state.error) {
+          onError(state.error);
         }
       }
 

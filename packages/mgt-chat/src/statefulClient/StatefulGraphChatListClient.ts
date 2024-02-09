@@ -27,7 +27,7 @@ import { graph } from '../utils/graph';
 // import { MessageCache } from './Caching/MessageCache';
 import { GraphConfig } from './GraphConfig';
 import { GraphNotificationUserClient } from './GraphNotificationUserClient';
-import { ThreadEventEmitter } from './ThreadEventEmitter';
+import { ThreadEventEmitter, GraphNotificationUserClientError } from './ThreadEventEmitter';
 import { ChatThreadCollection, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
 import { ChatMessageInfo, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { error } from '@microsoft/mgt-element';
@@ -85,6 +85,7 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
   chatThreads: GraphChatThread[];
   chatMessage: ChatMessage | undefined;
   moreChatThreadsToLoad: boolean | undefined;
+  error: GraphNotificationUserClientError | undefined;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
 interface StatefulClient<T> {
@@ -317,7 +318,8 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     userId: '',
     chatThreads: [],
     moreChatThreadsToLoad: undefined,
-    chatMessage: undefined
+    chatMessage: undefined,
+    error: undefined
   };
 
   /**
@@ -597,12 +599,12 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     }
   }
 
-  // private readonly onGraphNotificationUserClientError = (error: GraphNotificationUserClientError) => {
-  //   this.notifyStateChange((draft: GraphChatListClient) => {
-  //     draft.status = 'error';
-  //     console.error('GraphNotificationUserClientError', error);
-  //   });
-  // };
+  private readonly onGraphNotificationUserClientError = (err: GraphNotificationUserClientError) => {
+    this.notifyStateChange((draft: GraphChatListClient) => {
+      draft.status = 'error';
+      draft.error = err;
+    });
+  };
 
   /**
    * Register event listeners for chat events to be triggered from the notification service
@@ -624,10 +626,10 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('reconnected', () => {
       void this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
     });
-    // this._eventEmitter.on(
-    //   'graphNotificationUserClientError',
-    //   (error: GraphNotificationUserClientError) => void this.onGraphNotificationUserClientError(error)
-    // );
+    this._eventEmitter.on(
+      'graphNotificationUserClientError',
+      (err: GraphNotificationUserClientError) => void this.onGraphNotificationUserClientError(err)
+    );
   }
 }
 

@@ -5,6 +5,7 @@ import { Chat, ChatList, NewChat, ChatListButtonItem, ChatListMenuItem } from '@
 import { ChatMessage, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
 import { GraphChatThread } from '../../../packages/mgt-chat/src/statefulClient/StatefulGraphChatListClient';
+import { GraphNotificationUserClientError } from '@microsoft/mgt-chat/src/statefulClient/ThreadEventEmitter';
 
 const ChatAddIconBundle = bundleIcon(Compose24Filled, Compose24Regular);
 
@@ -20,20 +21,28 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
       onClick: () => console.log('Add chat clicked')
     }
   ];
+
   const menus: ChatListMenuItem[] = [
     {
       displayText: 'My custom menu item',
       onClick: () => console.log('My custom menu item clicked')
     }
   ];
+
   const onAllMessagesRead = useCallback((chatIds: string[]) => {
     console.log(`Number of chats marked as read: ${chatIds.length}`);
   }, []);
+
   const onLoaded = (chatThreads: GraphChatThread[]) => {
     console.log('Chat threads loaded: ', chatThreads.length);
   };
+
   const onMessageReceived = (msg: ChatMessage) => {
     console.log('SampleChatLog: Message received', msg);
+  };
+
+  const onError = (error: GraphNotificationUserClientError) => {
+    console.log('Error', error);
   };
 
   return (
@@ -45,6 +54,7 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
       onSelected={onSelected}
       onMessageReceived={onMessageReceived}
       onAllMessagesRead={onAllMessagesRead}
+      onError={onError}
     />
   );
 });

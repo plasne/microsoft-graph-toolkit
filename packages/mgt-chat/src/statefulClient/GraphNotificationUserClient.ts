@@ -319,8 +319,8 @@ export class GraphNotificationUserClient {
       withCredentials: false
     };
 
-    // retry with the following intervals, else give up by returning null.
-    const retryTimes = [100, 200, 300];
+    // retry with the following intervals, else give up by returning null, we keep the retry interval pretty short and only 2 times
+    const retryTimes = [10, 100];
     const retryPolicy = {
       nextRetryDelayInMilliseconds: (context: RetryContext) => {
         return context.previousRetryCount > retryTimes.length ? null : retryTimes[context.previousRetryCount];
