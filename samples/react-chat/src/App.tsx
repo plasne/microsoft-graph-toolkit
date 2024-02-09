@@ -5,7 +5,6 @@ import { Chat, ChatList, NewChat, ChatListButtonItem, ChatListMenuItem } from '@
 import { ChatMessage, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
 import { GraphChatThread } from '../../../packages/mgt-chat/src/statefulClient/StatefulGraphChatListClient';
-import { GraphNotificationUserClientError } from '@microsoft/mgt-chat/src/statefulClient/ThreadEventEmitter';
 
 const ChatAddIconBundle = bundleIcon(Compose24Filled, Compose24Regular);
 
@@ -41,10 +40,6 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
     console.log('SampleChatLog: Message received', msg);
   };
 
-  const onError = (error: GraphNotificationUserClientError) => {
-    console.error('Error', error);
-  };
-
   return (
     <ChatList
       onLoaded={onLoaded}
@@ -54,7 +49,7 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
       onSelected={onSelected}
       onMessageReceived={onMessageReceived}
       onAllMessagesRead={onAllMessagesRead}
-      onError={onError}
+      onConnectionChanged={(connected: boolean) => console.log('Connection changed: ', connected)}
     />
   );
 });

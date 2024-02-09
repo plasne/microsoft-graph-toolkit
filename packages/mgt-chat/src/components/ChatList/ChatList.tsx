@@ -10,7 +10,6 @@ import {
   GraphChatListClient,
   GraphChatThread
 } from '../../statefulClient/StatefulGraphChatListClient';
-import { GraphNotificationUserClientError } from '../../statefulClient/ThreadEventEmitter';
 import { ChatListHeader } from '../ChatListHeader/ChatListHeader';
 import { IChatListMenuItemsProps } from '../ChatListHeader/EllipsisMenu';
 import { ChatListButtonItem } from '../ChatListHeader/ChatListButtonItem';
@@ -24,13 +23,13 @@ export interface IChatListItemProps {
   onSelected: (e: GraphChat) => void;
   onUnselected?: (e: GraphChat) => void;
   onLoaded?: (e: GraphChatThread[]) => void;
-  onError?: (e: GraphNotificationUserClientError) => void;
   onAllMessagesRead: (e: string[]) => void;
   buttonItems?: ChatListButtonItem[];
   chatThreadsPerPage: number;
   lastReadTimeInterval?: number;
   selectedChatId?: string;
   onMessageReceived?: (msg: ChatMessage) => void;
+  onConnectionChanged?: (connected: boolean) => void;
 }
 
 const useStyles = makeStyles({
@@ -94,7 +93,7 @@ export const ChatList = ({
   onMessageReceived,
   onAllMessagesRead,
   onLoaded,
-  onError,
+  onConnectionChanged,
   chatThreadsPerPage,
   ...props
 }: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
@@ -159,12 +158,6 @@ export const ChatList = ({
         }
       }
 
-      if (state.status === 'error') {
-        if (onError && state.error) {
-          onError(state.error);
-        }
-      }
-
       if (state.status === 'chats loaded' && onLoaded) {
         onLoaded(state?.chatThreads ?? []);
         // the loadingRef is used to prevent multiple calls to loadMoreChatThreads
@@ -177,10 +170,9 @@ export const ChatList = ({
 
       if (state.status === 'server connection established') {
         setHeaderBannerMessage(''); // reset
-      }
-
-      if (state.status === 'creating server connections') {
-        setHeaderBannerMessage('Connecting...');
+        if (onConnectionChanged) {
+          onConnectionChanged(true);
+        }
       }
 
       if (state.status === 'server connection lost') {
@@ -189,6 +181,10 @@ export const ChatList = ({
             ? 'We ran into a problem. Please close or refresh.' // this happens when component is unmounted
             : 'We ran into a problem. Reconnecting...' // this happens when we lost connection to the server and we will try to reconnect.
         );
+
+        if (onConnectionChanged) {
+          onConnectionChanged(false);
+        }
       }
     });
 

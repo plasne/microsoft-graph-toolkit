@@ -23,7 +23,7 @@ import { currentUserId } from '../utils/currentUser';
 import { graph } from '../utils/graph';
 import { GraphConfig } from './GraphConfig';
 import { GraphNotificationUserClient } from './GraphNotificationUserClient';
-import { ThreadEventEmitter, GraphNotificationUserClientError } from './ThreadEventEmitter';
+import { ThreadEventEmitter } from './ThreadEventEmitter';
 import { ChatThreadCollection, loadChatThreads, loadChatThreadsByPage } from './graph.chat';
 import { ChatMessageInfo, Chat as GraphChat } from '@microsoft/microsoft-graph-types';
 import { error } from '@microsoft/mgt-element';
@@ -75,13 +75,11 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
     | 'loading chats'
     | 'no chats'
     | 'chats loaded'
-    | 'error'
     | 'chat message received'
     | 'chats read';
   chatThreads: GraphChatThread[];
   chatMessage: ChatMessage | undefined;
   moreChatThreadsToLoad: boolean | undefined;
-  error: GraphNotificationUserClientError | undefined;
   permanentDisconnect: boolean;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
@@ -166,7 +164,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._notificationClient = new GraphNotificationUserClient(this._eventEmitter, this._graph);
 
     void this.updateUserSubscription(this.userId);
-    void this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
   }
 
   /**
@@ -316,7 +313,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     chatThreads: [],
     moreChatThreadsToLoad: undefined,
     chatMessage: undefined,
-    error: undefined,
     permanentDisconnect: false
   };
 
@@ -532,8 +528,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this.userId = userId;
     // by updating the followed chat the notification client will reconnect to SignalR
     await this.updateUserSubscription(userId);
-
-    await this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
   };
 
   private clearCurrentUserMessages() {
@@ -597,13 +591,6 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     }
   }
 
-  private readonly onGraphNotificationUserClientError = (err: GraphNotificationUserClientError) => {
-    this.notifyStateChange((draft: GraphChatListClient) => {
-      draft.status = 'error';
-      draft.error = err;
-    });
-  };
-
   /**
    * Register event listeners for chat events to be triggered from the notification service
    */
@@ -618,20 +605,11 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
       });
     });
     this._eventEmitter.on('connected', () => {
-      this.notifyStateChange((draft: GraphChatListClient) => {
-        draft.status = 'server connection established';
-      });
-    });
-    this._eventEmitter.on('reconnected', () => {
       void this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
       this.notifyStateChange((draft: GraphChatListClient) => {
         draft.status = 'server connection established';
       });
     });
-    this._eventEmitter.on(
-      'graphNotificationUserClientError',
-      (err: GraphNotificationUserClientError) => void this.onGraphNotificationUserClientError(err)
-    );
   }
 }
 

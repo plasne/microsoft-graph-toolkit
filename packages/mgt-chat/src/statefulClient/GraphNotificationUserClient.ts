@@ -63,7 +63,6 @@ export class GraphNotificationUserClient {
   private userId = '';
   private currentUserId = '';
   private lastNotificationUrl = '';
-  private tearingDown = false;
   private get sessionId() {
     return 'default';
   }
@@ -95,20 +94,16 @@ export class GraphNotificationUserClient {
    * i.e
    */
   public tearDown() {
-    this.tearingDown = true;
     void this.unsubscribeFromUserNotifications(this.userId);
+
+    const emitter: ThreadEventEmitter | undefined = this.emitter;
+    emitter.disconnected(true);
   }
 
   private readonly getToken = async () => {
     const token = await Providers.globalProvider.getAccessToken();
     if (!token) throw new Error('Could not retrieve token for user');
     return token;
-  };
-
-  private readonly onReconnect = (connectionId: string | undefined) => {
-    log(`Reconnected. ConnectionId: ${connectionId || 'undefined'}`);
-    const emitter: ThreadEventEmitter | undefined = this.emitter;
-    emitter?.reconnected();
   };
 
   private readonly receiveNotificationMessage = (message: string) => {
@@ -231,8 +226,9 @@ export class GraphNotificationUserClient {
     this.isRewnewalInProgress = true;
     this.currentUserId = this.userId;
 
+    let isRenewalInError = false;
+
     try {
-      const emitter: ThreadEventEmitter | undefined = this.emitter;
       let subscription = await this.getSubscription(this.currentUserId, this.sessionId);
 
       if (subscription) {
@@ -250,6 +246,7 @@ export class GraphNotificationUserClient {
             await this.renewSubscription(this.currentUserId, subscription);
           }
         } catch (renewalEx) {
+          isRenewalInError = true;
           // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
           if ((renewalEx as { statusCode?: number }).statusCode === 404) {
             log('Removing subscription from cache');
@@ -258,7 +255,6 @@ export class GraphNotificationUserClient {
           } else {
             // log and continue (we will try again later)
             error(renewalEx);
-            emitter?.graphNotificationUserClientError({ type: 'renewalError', error: renewalEx as Error });
           }
         }
       }
@@ -283,9 +279,20 @@ export class GraphNotificationUserClient {
         }
       }
     } catch (e) {
+      isRenewalInError = true;
       // log and continue (we will try again later)
       error(e);
-      this.emitter.graphNotificationUserClientError({ type: 'unknownError', error: e as Error });
+    }
+
+    const isConnected = !isRenewalInError && this.connection?.state === HubConnectionState.Connected;
+    if (this.wasConnected !== isConnected) {
+      this.wasConnected = isConnected;
+      const emitter: ThreadEventEmitter | undefined = this.emitter;
+      if (isConnected) {
+        emitter?.connected();
+      } else {
+        emitter?.disconnected(false);
+      }
     }
 
     this.isRewnewalInProgress = false;
@@ -335,41 +342,15 @@ export class GraphNotificationUserClient {
       .configureLogging(LogLevel.Information)
       .build();
 
-    const emitter: ThreadEventEmitter | undefined = this.emitter;
-    connection.onclose((err?: Error) => {
-      emitter?.graphNotificationUserClientError({ type: 'websocketError', error: err });
-
-      if (err) {
-        log('Connection closed with error', err);
-      }
-
-      emitter?.disconnected(this.tearingDown);
-    });
-
-    connection.onreconnected(this.onReconnect);
-
-    connection.onreconnecting(() => {
-      emitter?.disconnected(this.tearingDown);
-    });
-
     connection.on('receivenotificationmessageasync', this.receiveNotificationMessage);
-
     connection.on('EchoMessage', log);
 
     this.connection = connection;
     try {
       await connection.start();
       log(connection);
-
-      if (!this.wasConnected) {
-        this.wasConnected = true;
-        emitter?.connected();
-      } else {
-        emitter?.reconnected();
-      }
     } catch (e) {
       error('An error occurred connecting to the notification web socket', e);
-      emitter?.graphNotificationUserClientError({ type: 'websocketError', error: e as Error });
     }
   }
 
