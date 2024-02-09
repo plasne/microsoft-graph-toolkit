@@ -21,10 +21,6 @@ import {
 import { produce } from 'immer';
 import { currentUserId } from '../utils/currentUser';
 import { graph } from '../utils/graph';
-// TODO: MessageCache is added here for the purpose of following the convention of StatefulGraphChatClient. However, StatefulGraphChatListClient
-//       is also leveraging the same cache and performing the same actions which would have resulted in race conditions against the same messages
-//       in the cache. To avoid this, I have commented out the code. We should revisit this and determine if we need to use the cache.
-// import { MessageCache } from './Caching/MessageCache';
 import { GraphConfig } from './GraphConfig';
 import { GraphNotificationUserClient } from './GraphNotificationUserClient';
 import { ThreadEventEmitter, GraphNotificationUserClientError } from './ThreadEventEmitter';
