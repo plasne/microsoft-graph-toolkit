@@ -82,6 +82,7 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
   chatMessage: ChatMessage | undefined;
   moreChatThreadsToLoad: boolean | undefined;
   error: GraphNotificationUserClientError | undefined;
+  permanentDisconnect: boolean;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
 interface StatefulClient<T> {
@@ -315,7 +316,8 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     chatThreads: [],
     moreChatThreadsToLoad: undefined,
     chatMessage: undefined,
-    error: undefined
+    error: undefined,
+    permanentDisconnect: false
   };
 
   /**
@@ -609,9 +611,10 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('chatMessageReceived', (message: ChatMessage) => void this.onMessageReceived(message));
     this._eventEmitter.on('chatMessageDeleted', this.onMessageDeleted);
     this._eventEmitter.on('chatMessageEdited', (message: ChatMessage) => void this.onMessageEdited(message));
-    this._eventEmitter.on('disconnected', () => {
+    this._eventEmitter.on('disconnected', (permanent: boolean) => {
       this.notifyStateChange((draft: GraphChatListClient) => {
         draft.status = 'server connection lost';
+        draft.permanentDisconnect = permanent;
       });
     });
     this._eventEmitter.on('connected', () => {
@@ -621,6 +624,9 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     });
     this._eventEmitter.on('reconnected', () => {
       void this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
+      this.notifyStateChange((draft: GraphChatListClient) => {
+        draft.status = 'server connection established';
+      });
     });
     this._eventEmitter.on(
       'graphNotificationUserClientError',

@@ -63,6 +63,7 @@ export class GraphNotificationUserClient {
   private userId = '';
   private currentUserId = '';
   private lastNotificationUrl = '';
+  private tearingDown = false;
   private get sessionId() {
     return 'default';
   }
@@ -94,6 +95,7 @@ export class GraphNotificationUserClient {
    * i.e
    */
   public tearDown() {
+    this.tearingDown = true;
     void this.unsubscribeFromUserNotifications(this.userId);
   }
 
@@ -106,7 +108,7 @@ export class GraphNotificationUserClient {
   private readonly onReconnect = (connectionId: string | undefined) => {
     log(`Reconnected. ConnectionId: ${connectionId || 'undefined'}`);
     const emitter: ThreadEventEmitter | undefined = this.emitter;
-    emitter?.connected();
+    emitter?.reconnected();
   };
 
   private readonly receiveNotificationMessage = (message: string) => {
@@ -227,15 +229,9 @@ export class GraphNotificationUserClient {
     }
 
     this.isRewnewalInProgress = true;
-
     this.currentUserId = this.userId;
 
     try {
-      // get sub
-      // if sub exists, renew
-      //    if renew fails, delete sub, set sub to undefined
-      // if sub does not exist, create
-
       const emitter: ThreadEventEmitter | undefined = this.emitter;
       let subscription = await this.getSubscription(this.currentUserId, this.sessionId);
 
@@ -347,13 +343,13 @@ export class GraphNotificationUserClient {
         log('Connection closed with error', err);
       }
 
-      emitter?.disconnected();
+      emitter?.disconnected(this.tearingDown);
     });
 
     connection.onreconnected(this.onReconnect);
 
     connection.onreconnecting(() => {
-      emitter?.disconnected();
+      emitter?.disconnected(this.tearingDown);
     });
 
     connection.on('receivenotificationmessageasync', this.receiveNotificationMessage);

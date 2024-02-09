@@ -99,6 +99,7 @@ export const ChatList = ({
   ...props
 }: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
+
   const [headerBannerMessage, setHeaderBannerMessage] = useState<string>('');
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
@@ -183,8 +184,11 @@ export const ChatList = ({
       }
 
       if (state.status === 'server connection lost') {
-        // this happens when we lost connection to the server and we will try to reconnect
-        setHeaderBannerMessage('We ran into a problem. Reconnecting...');
+        setHeaderBannerMessage(
+          state.permanentDisconnect
+            ? 'We ran into a problem. Please close or refresh.' // this happens when component is unmounted
+            : 'We ran into a problem. Reconnecting...' // this happens when we lost connection to the server and we will try to reconnect.
+        );
       }
     });
 
@@ -194,7 +198,6 @@ export const ChatList = ({
       log(chatListClient.getState());
       chatListClient.offStateChange(setChatListState);
       chatListClient.tearDown();
-      setHeaderBannerMessage('We ran into a problem. Please close or refresh.');
     };
   }, [chatListClient, onMessageReceived, onLoaded]);
 

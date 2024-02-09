@@ -74,8 +74,8 @@ export class ThreadEventEmitter {
   notificationsSubscribedForResource(resouce: string) {
     this.emitter.emit('notificationsSubscribedForResource', resouce);
   }
-  disconnected() {
-    this.emitter.emit('disconnected');
+  disconnected(permanent: boolean) {
+    this.emitter.emit('disconnected', permanent);
   }
   connected() {
     this.emitter.emit('connected');
