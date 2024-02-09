@@ -42,7 +42,7 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
   };
 
   const onError = (error: GraphNotificationUserClientError) => {
-    console.log('Error', error);
+    console.error('Error', error);
   };
 
   return (

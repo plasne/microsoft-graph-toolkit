@@ -103,6 +103,12 @@ export class GraphNotificationUserClient {
     return token;
   };
 
+  private readonly onReconnect = (connectionId: string | undefined) => {
+    log(`Reconnected. ConnectionId: ${connectionId || 'undefined'}`);
+    const emitter: ThreadEventEmitter | undefined = this.emitter;
+    emitter?.connected();
+  };
+
   private readonly receiveNotificationMessage = (message: string) => {
     if (typeof message !== 'string') throw new Error('Expected string from receivenotificationmessageasync');
 
@@ -341,6 +347,12 @@ export class GraphNotificationUserClient {
         log('Connection closed with error', err);
       }
 
+      emitter?.disconnected();
+    });
+
+    connection.onreconnected(this.onReconnect);
+
+    connection.onreconnecting(() => {
       emitter?.disconnected();
     });
 
