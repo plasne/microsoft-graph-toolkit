@@ -9,6 +9,7 @@ import { BetaGraph, IGraph, Providers, createFromProvider, error, log } from '@m
 import {
   HubConnection,
   HubConnectionBuilder,
+  HubConnectionState,
   IHttpConnectionOptions,
   LogLevel,
   RetryContext
@@ -58,8 +59,10 @@ export class GraphNotificationUserClient {
   private renewalInterval?: string;
   private renewalCount = 0;
   private isRewnewalInProgress = false;
+  private wasConnected = false;
   private userId = '';
   private currentUserId = '';
+  private lastNotificationUrl = '';
   private get sessionId() {
     return 'default';
   }
@@ -91,22 +94,13 @@ export class GraphNotificationUserClient {
    * i.e
    */
   public tearDown() {
-    log('cleaning up user graph notification resources');
-    if (this.renewalInterval) this.timer.clearInterval(this.renewalInterval);
-    this.timer.close();
+    void this.unsubscribeFromUserNotifications(this.userId);
   }
 
   private readonly getToken = async () => {
     const token = await Providers.globalProvider.getAccessToken();
     if (!token) throw new Error('Could not retrieve token for user');
     return token;
-  };
-
-  // TODO: understand if this is needed under the native model
-  private readonly onReconnect = (connectionId: string | undefined) => {
-    log(`Reconnected. ConnectionId: ${connectionId || 'undefined'}`);
-    const emitter: ThreadEventEmitter | undefined = this.emitter;
-    emitter?.connected();
   };
 
   private readonly receiveNotificationMessage = (message: string) => {
@@ -182,7 +176,11 @@ export class GraphNotificationUserClient {
     await this.subscriptionCache.cacheSubscription(userId, ComponentType.User, this.sessionId, subscriptionRecord);
   };
 
-  private async subscribeToResource(userId: string, resourcePath: string, changeTypes: ChangeTypes[]) {
+  private async createSubscription(userId: string): Promise<Subscription> {
+    log('Creating a new subscription.');
+    const resourcePath = `/users/${userId}/chats/getAllmessages`;
+    const changeTypes: ChangeTypes[] = ['created', 'updated', 'deleted'];
+
     // build subscription request
     const expirationDateTime = new Date(
       new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
@@ -207,10 +205,9 @@ export class GraphNotificationUserClient {
 
     await this.cacheSubscription(userId, subscription);
 
-    // create a connection to the web socket if one does not exist
-    if (!this.connection) await this.createSignalRConnection(subscription.notificationUrl);
+    log('Subscription created.');
 
-    log('Invoked CreateSubscription');
+    return subscription;
   }
 
   private readonly renewalSync = () => {
@@ -228,68 +225,86 @@ export class GraphNotificationUserClient {
     this.currentUserId = this.userId;
 
     try {
-      const subscriptions =
-        (await this.subscriptionCache.loadSubscriptions(this.currentUserId, this.sessionId))?.subscriptions || [];
-      if (subscriptions.length === 0) {
-        log('No subscriptions found in subscription cache. Creating a new subscription.');
+      // get sub
+      // if sub exists, renew
+      //    if renew fails, delete sub, set sub to undefined
+      // if sub does not exist, create
 
-        await this.subscribeToResource(this.currentUserId, `/users/${this.currentUserId}/chats/getAllmessages`, [
-          'created',
-          'updated',
-          'deleted'
-        ]);
-      } else {
-        for (const subscription of subscriptions) {
-          if (!subscription.expirationDateTime || !subscription.id || !subscription.notificationUrl) continue;
+      const emitter: ThreadEventEmitter | undefined = this.emitter;
+      let subscription = await this.getSubscription(this.currentUserId, this.sessionId);
 
+      if (subscription) {
+        if (!subscription.expirationDateTime || !subscription.id) {
+          // this should never happen.
+          throw new Error('Subscription is invalid.');
+        }
+
+        try {
           const expirationTime = new Date(subscription.expirationDateTime);
           const now = new Date();
           const diff = Math.round((expirationTime.getTime() - now.getTime()) / 1000);
 
           if (diff <= appSettings.renewalThreshold) {
-            this.renewalCount++;
-            log(`Renewing Graph subscription for ChatList. RenewalCount: ${this.renewalCount}.`);
-
-            const newExpirationTime = new Date(
-              new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
-            );
-
-            try {
-              await this.renewSubscription(this.currentUserId, subscription.id, newExpirationTime.toISOString());
-            } catch (e) {
-              // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
-              if ((e as { statusCode?: number }).statusCode === 404) {
-                log('Removing subscription from cache', subscription.id);
-                await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId, this.sessionId);
-                await this.subscribeToUserNotifications(this.currentUserId);
-
-                const emitter: ThreadEventEmitter | undefined = this.emitter;
-                emitter?.reconnected();
-              }
-            }
-          } else {
-            // create a connection to the web socket if one does not exist
-            if (!this.connection) await this.createSignalRConnection(subscription.notificationUrl);
+            await this.renewSubscription(this.currentUserId, subscription);
           }
+        } catch (renewalEx) {
+          // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
+          if ((renewalEx as { statusCode?: number }).statusCode === 404) {
+            log('Removing subscription from cache');
+            await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId, this.sessionId);
+            subscription = undefined;
+          } else {
+            // log and continue (we will try again later)
+            error(renewalEx);
+            emitter?.graphNotificationUserClientError({ type: 'renewalError', error: renewalEx as Error });
+          }
+        }
+      }
 
-          // Expecting only one subscription per user
-          break;
+      if (!subscription) {
+        subscription = await this.createSubscription(this.currentUserId);
+      }
+
+      // notificationUrl comes in the form of websockets:https://graph.microsoft.com/beta/subscriptions/notificationChannel/websockets/<Id>?groupid=<UserId>&sessionid=default
+      // if <Id> changes, we need to create a new connection
+      if (
+        !this.connection ||
+        this.connection.state !== HubConnectionState.Connected ||
+        this.lastNotificationUrl !== subscription.notificationUrl
+      ) {
+        if (subscription.notificationUrl) {
+          this.lastNotificationUrl = subscription.notificationUrl;
+          await this.createSignalRConnection(subscription.notificationUrl);
+        } else {
+          // this should never happen.
+          throw new Error('Subscription notificationUrl is invalid.');
         }
       }
     } catch (e) {
+      // log and continue (we will try again later)
       error(e);
+      this.emitter.graphNotificationUserClientError({ type: 'unknownError', error: e as Error });
     }
 
     this.isRewnewalInProgress = false;
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
   };
 
-  private readonly renewSubscription = async (
-    userId: string,
-    subscriptionId: string,
-    expirationDateTime: string
-  ): Promise<void> => {
+  private async getSubscription(userId: string, sessionId: string): Promise<Subscription | undefined> {
+    const subscriptions = (await this.subscriptionCache.loadSubscriptions(userId, sessionId))?.subscriptions || [];
+    return subscriptions.length > 0 ? subscriptions[0] : undefined;
+  }
+
+  private readonly renewSubscription = async (userId: string, subscription: Subscription): Promise<void> => {
+    this.renewalCount++;
+    log(`Renewing Graph subscription for ChatList. RenewalCount: ${this.renewalCount}.`);
+
+    const newExpirationTime = new Date(
+      new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
+    );
     // PATCH /subscriptions/{id}
+    const subscriptionId = subscription.id;
+    const expirationDateTime = newExpirationTime.toISOString();
     const renewedSubscription = (await this.graph.api(`${GraphConfig.subscriptionEndpoint}/${subscriptionId}`).patch({
       expirationDateTime
     })) as Subscription;
@@ -304,13 +319,11 @@ export class GraphNotificationUserClient {
       withCredentials: false
     };
 
-    // retry with the following intervals, the last interval will take precedence if there are more retries than intervals
-    const retryTimes = [0, 2000, 10000, 30000, 45000, 60000, 90000, 120000, 180000, 240000];
+    // retry with the following intervals, else give up by returning null.
+    const retryTimes = [100, 200, 300];
     const retryPolicy = {
       nextRetryDelayInMilliseconds: (context: RetryContext) => {
-        const index =
-          context.previousRetryCount < retryTimes.length ? context.previousRetryCount : retryTimes.length - 1;
-        return retryTimes[index];
+        return context.previousRetryCount > retryTimes.length ? null : retryTimes[context.previousRetryCount];
       }
     };
 
@@ -322,16 +335,12 @@ export class GraphNotificationUserClient {
 
     const emitter: ThreadEventEmitter | undefined = this.emitter;
     connection.onclose((err?: Error) => {
+      emitter?.graphNotificationUserClientError({ type: 'websocketError', error: err });
+
       if (err) {
         log('Connection closed with error', err);
       }
 
-      emitter?.disconnected();
-    });
-
-    connection.onreconnected(this.onReconnect);
-
-    connection.onreconnecting(() => {
       emitter?.disconnected();
     });
 
@@ -343,9 +352,16 @@ export class GraphNotificationUserClient {
     try {
       await connection.start();
       log(connection);
-      emitter?.connected();
+
+      if (!this.wasConnected) {
+        this.wasConnected = true;
+        emitter?.connected();
+      } else {
+        emitter?.reconnected();
+      }
     } catch (e) {
       error('An error occurred connecting to the notification web socket', e);
+      emitter?.graphNotificationUserClientError({ type: 'websocketError', error: e as Error });
     }
   }
 

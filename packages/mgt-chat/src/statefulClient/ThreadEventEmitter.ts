@@ -12,6 +12,10 @@ import { ReadReceiptReceivedEvent, TypingIndicatorReceivedEvent } from '@azure/c
 import { AadUserConversationMember, Chat, ChatMessage } from '@microsoft/microsoft-graph-types';
 import { EventEmitter } from 'events';
 
+export type GraphNotificationUserClientError = { type: 'websocketError' | 'renewalError' | 'unknownError' } & {
+  error: Error | undefined;
+};
+
 export type ChatEvent =
   | 'chatMessageReceived'
   | 'chatMessageEdited'
@@ -26,7 +30,8 @@ export type ChatEvent =
   | 'connected'
   | 'reconnected'
   | 'notificationsSubscribedForResource'
-  | 'graphNotificationClientError';
+  | 'graphNotificationClientError'
+  | 'graphNotificationUserClientError';
 
 export class ThreadEventEmitter {
   private readonly emitter: EventEmitter = new EventEmitter();
@@ -80,5 +85,8 @@ export class ThreadEventEmitter {
   }
   graphNotificationClientError(error: Error) {
     this.emitter.emit('graphNotificationClientError', error);
+  }
+  graphNotificationUserClientError(error: GraphNotificationUserClientError) {
+    this.emitter.emit('graphNotificationUserClientError', error);
   }
 }

@@ -593,6 +593,13 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     }
   }
 
+  // private readonly onGraphNotificationUserClientError = (error: GraphNotificationUserClientError) => {
+  //   this.notifyStateChange((draft: GraphChatListClient) => {
+  //     draft.status = 'error';
+  //     console.error('GraphNotificationUserClientError', error);
+  //   });
+  // };
+
   /**
    * Register event listeners for chat events to be triggered from the notification service
    */
@@ -613,6 +620,10 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('reconnected', () => {
       this.loadAndAppendChatThreads('', [], this.chatThreadsPerPage);
     });
+    // this._eventEmitter.on(
+    //   'graphNotificationUserClientError',
+    //   (error: GraphNotificationUserClientError) => void this.onGraphNotificationUserClientError(error)
+    // );
   }
 }
 
