@@ -602,6 +602,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
       this.notifyStateChange((draft: GraphChatListClient) => {
         draft.status = 'server connection lost';
         draft.permanentDisconnect = permanent;
+        draft.chatThreads = [];
       });
     });
     this._eventEmitter.on('connected', () => {

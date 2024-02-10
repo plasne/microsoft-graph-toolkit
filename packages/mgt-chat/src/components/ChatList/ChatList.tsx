@@ -15,6 +15,7 @@ import { IChatListMenuItemsProps } from '../ChatListHeader/EllipsisMenu';
 import { ChatListButtonItem } from '../ChatListHeader/ChatListButtonItem';
 import { Error } from '../Error/Error';
 import { LoadingMessagesErrorIcon } from '../Error/LoadingMessageErrorIcon';
+import { GenericErrorIcon } from '../Error/GenericErrorIcon';
 import { CreateANewChat } from '../Error/CreateANewChat';
 import { PleaseSignIn } from '../Error/PleaseSignIn';
 import { OpenTeamsLinkError } from '../Error/OpenTeams';
@@ -99,7 +100,6 @@ export const ChatList = ({
 }: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
 
-  const [headerBannerMessage, setHeaderBannerMessage] = useState<string>('');
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [internalSelectedChatId, setInternalSelectedChatId] = useState<string | undefined>();
@@ -168,23 +168,12 @@ export const ChatList = ({
         onLoaded([]);
       }
 
-      if (state.status === 'server connection established') {
-        setHeaderBannerMessage(''); // reset
-        if (onConnectionChanged) {
-          onConnectionChanged(true);
-        }
+      if (state.status === 'server connection established' && onConnectionChanged) {
+        onConnectionChanged(true);
       }
 
-      if (state.status === 'server connection lost') {
-        setHeaderBannerMessage(
-          state.permanentDisconnect
-            ? 'We ran into a problem. Please close or refresh.' // this happens when component is unmounted
-            : 'We ran into a problem. Reconnecting...' // this happens when we lost connection to the server and we will try to reconnect.
-        );
-
-        if (onConnectionChanged) {
-          onConnectionChanged(false);
-        }
+      if (state.status === 'server connection lost' && onConnectionChanged) {
+        onConnectionChanged(false);
       }
     });
 
@@ -244,7 +233,6 @@ export const ChatList = ({
     'loading messages'
   ].includes(chatListState?.status ?? '');
 
-  const isError = ['server connection lost', 'error'].includes(chatListState?.status ?? '');
   const targetElementRef = useRef(null);
 
   useEffect(() => {
@@ -280,13 +268,13 @@ export const ChatList = ({
     <FluentThemeProvider fluentTheme={FluentTheme}>
       <FluentProvider theme={webLightTheme} className={styles.fullHeight}>
         <div className={styles.chatList}>
-          {Providers.globalProvider?.state === ProviderState.SignedIn && (
-            <ChatListHeader
-              bannerMessage={headerBannerMessage}
-              buttonItems={chatListButtonItems}
-              menuItems={[markAllAsRead, ...(props.menuItems ?? [])]}
-            />
-          )}
+          {Providers.globalProvider?.state === ProviderState.SignedIn &&
+            chatListState?.status !== 'server connection lost' && (
+              <ChatListHeader
+                buttonItems={chatListButtonItems}
+                menuItems={[markAllAsRead, ...(props.menuItems ?? [])]}
+              />
+            )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
             <>
               <div className={styles.chatListItems}>
@@ -325,8 +313,14 @@ export const ChatList = ({
                     subheading={CreateANewChat}
                   ></Error>
                 )}
-                {isError && (
-                  <Error message="We're sorry—we've run into an issue." subheading={OpenTeamsLinkError}></Error>
+                {chatListState?.status === 'server connection lost' && chatListState?.permanentDisconnect === false && (
+                  <Error message="We ran into a problem. Reconnecting..." subheading={OpenTeamsLinkError}></Error>
+                )}
+                {chatListState?.status === 'server connection lost' && chatListState?.permanentDisconnect === true && (
+                  <Error
+                    message="We ran into a problem. Please close or refresh."
+                    subheading={OpenTeamsLinkError}
+                  ></Error>
                 )}
               </div>
             </>

@@ -59,7 +59,7 @@ export class GraphNotificationUserClient {
   private renewalInterval?: string;
   private renewalCount = 0;
   private isRewnewalInProgress = false;
-  private wasConnected = false;
+  private wasConnected?: boolean | undefined;
   private userId = '';
   private currentUserId = '';
   private lastNotificationUrl = '';
@@ -396,6 +396,7 @@ export class GraphNotificationUserClient {
 
   public async subscribeToUserNotifications(userId: string) {
     log(`User subscription with id: ${userId}`);
+    this.wasConnected = undefined;
     this.userId = userId;
     await this.renewal();
   }
