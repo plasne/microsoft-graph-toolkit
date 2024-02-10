@@ -15,7 +15,6 @@ import { IChatListMenuItemsProps } from '../ChatListHeader/EllipsisMenu';
 import { ChatListButtonItem } from '../ChatListHeader/ChatListButtonItem';
 import { Error } from '../Error/Error';
 import { LoadingMessagesErrorIcon } from '../Error/LoadingMessageErrorIcon';
-import { GenericErrorIcon } from '../Error/GenericErrorIcon';
 import { CreateANewChat } from '../Error/CreateANewChat';
 import { PleaseSignIn } from '../Error/PleaseSignIn';
 import { OpenTeamsLinkError } from '../Error/OpenTeams';
