@@ -285,10 +285,16 @@ export class GraphNotificationUserClient {
     if (this.wasConnected !== isConnected) {
       this.wasConnected = isConnected;
       const emitter: ThreadEventEmitter | undefined = this.emitter;
-      if (isConnected) {
-        emitter?.connected();
-      } else {
-        emitter?.disconnected();
+
+      try {
+        if (isConnected) {
+          emitter?.connected();
+        } else {
+          emitter?.disconnected();
+        }
+      } catch (e) {
+        // log emitter thrown exception and continue
+        error(e);
       }
     }
 
