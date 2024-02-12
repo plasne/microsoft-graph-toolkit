@@ -11,8 +11,7 @@ import {
   HubConnectionBuilder,
   HubConnectionState,
   IHttpConnectionOptions,
-  LogLevel,
-  RetryContext
+  LogLevel
 } from '@microsoft/signalr';
 import { ThreadEventEmitter } from './ThreadEventEmitter';
 import type {
@@ -29,7 +28,7 @@ import { Timer } from '../utils/Timer';
 export const appSettings = {
   defaultSubscriptionLifetimeInMinutes: 10,
   renewalThreshold: 75, // The number of seconds before subscription expires it will be renewed
-  renewalTimerInterval: 10, // The number of seconds between executions of the renewal timer
+  renewalTimerInterval: 3, // The number of seconds between executions of the renewal timer
   useCanary: GraphConfig.useCanary
 };
 
@@ -331,17 +330,8 @@ export class GraphNotificationUserClient {
       withCredentials: false
     };
 
-    // retry with the following intervals, else give up by returning null, we keep the retry interval pretty short and only 2 times
-    const retryTimes = [10, 100];
-    const retryPolicy = {
-      nextRetryDelayInMilliseconds: (context: RetryContext) => {
-        return context.previousRetryCount > retryTimes.length ? null : retryTimes[context.previousRetryCount];
-      }
-    };
-
     const connection = new HubConnectionBuilder()
       .withUrl(GraphConfig.adjustNotificationUrl(notificationUrl), connectionOptions)
-      .withAutomaticReconnect(retryPolicy)
       .configureLogging(LogLevel.Information)
       .build();
 
