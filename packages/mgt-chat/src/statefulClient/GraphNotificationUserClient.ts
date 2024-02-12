@@ -172,7 +172,7 @@ export class GraphNotificationUserClient {
 
   private readonly cacheSubscription = async (userId: string, subscriptionRecord: Subscription): Promise<void> => {
     log(subscriptionRecord);
-    await this.subscriptionCache.cacheSubscription(userId, ComponentType.User, this.sessionId, subscriptionRecord);
+    await this.subscriptionCache.cacheSubscription(userId, ComponentType.User, subscriptionRecord);
   };
 
   private async createSubscription(userId: string): Promise<Subscription> {
@@ -378,11 +378,11 @@ export class GraphNotificationUserClient {
     }
 
     await this.closeSignalRConnection();
-    const cacheData = await this.subscriptionCache.loadSubscriptions(userId, this.sessionId);
+    const cacheData = await this.subscriptionCache.loadSubscriptions(userId);
     if (cacheData) {
       await Promise.all([
         this.removeSubscriptions(cacheData.subscriptions),
-        this.subscriptionCache.deleteCachedSubscriptions(userId, this.sessionId)
+        this.subscriptionCache.deleteCachedSubscriptions(userId)
       ]);
     }
   }
