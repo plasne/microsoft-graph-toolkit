@@ -19,7 +19,7 @@ import { CreateANewChat } from '../Error/CreateANewChat';
 import { PleaseSignIn } from '../Error/PleaseSignIn';
 import { OpenTeamsLinkError } from '../Error/OpenTeams';
 
-export interface IChatListItemProps {
+export interface IChatListProps {
   onSelected: (e: GraphChat) => void;
   onUnselected?: (e: GraphChat) => void;
   onLoaded?: (e: GraphChatThread[]) => void;
@@ -96,7 +96,7 @@ export const ChatList = ({
   onConnectionChanged,
   chatThreadsPerPage,
   ...props
-}: MgtTemplateProps & IChatListItemProps & IChatListMenuItemsProps) => {
+}: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
 
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
