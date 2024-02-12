@@ -95,9 +95,6 @@ export class GraphNotificationUserClient {
    */
   public tearDown() {
     void this.unsubscribeFromUserNotifications(this.userId);
-
-    const emitter: ThreadEventEmitter | undefined = this.emitter;
-    emitter.disconnected(true);
   }
 
   private readonly getToken = async () => {
@@ -291,7 +288,7 @@ export class GraphNotificationUserClient {
       if (isConnected) {
         emitter?.connected();
       } else {
-        emitter?.disconnected(false);
+        emitter?.disconnected();
       }
     }
 

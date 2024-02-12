@@ -32,13 +32,17 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
     console.log(`Number of chats marked as read: ${chatIds.length}`);
   }, []);
 
-  const onLoaded = (chatThreads: GraphChatThread[]) => {
+  const onLoaded = useCallback((chatThreads: GraphChatThread[]) => {
     console.log('Chat threads loaded: ', chatThreads.length);
-  };
+  }, []);
 
-  const onMessageReceived = (msg: ChatMessage) => {
+  const onMessageReceived = useCallback((msg: ChatMessage) => {
     console.log('SampleChatLog: Message received', msg);
-  };
+  }, []);
+
+  const onConnectionChanged = useCallback((connected: boolean) => {
+    console.log('Connection changed: ', connected);
+  }, []);
 
   return (
     <ChatList
@@ -49,7 +53,7 @@ const ChatListWrapper = memo(({ onSelected }: { onSelected: (e: GraphChat) => vo
       onSelected={onSelected}
       onMessageReceived={onMessageReceived}
       onAllMessagesRead={onAllMessagesRead}
-      onConnectionChanged={(connected: boolean) => console.log('Connection changed: ', connected)}
+      onConnectionChanged={onConnectionChanged}
     />
   );
 });

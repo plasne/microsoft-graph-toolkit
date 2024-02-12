@@ -80,7 +80,6 @@ export type GraphChatListClient = Pick<MessageThreadProps, 'userId'> & {
   chatThreads: GraphChatThread[];
   chatMessage: ChatMessage | undefined;
   moreChatThreadsToLoad: boolean | undefined;
-  permanentDisconnect: boolean;
 } & Pick<ErrorBarProps, 'activeErrorMessages'>;
 
 interface StatefulClient<T> {
@@ -312,8 +311,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     userId: '',
     chatThreads: [],
     moreChatThreadsToLoad: undefined,
-    chatMessage: undefined,
-    permanentDisconnect: false
+    chatMessage: undefined
   };
 
   /**
@@ -598,10 +596,9 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._eventEmitter.on('chatMessageReceived', (message: ChatMessage) => void this.onMessageReceived(message));
     this._eventEmitter.on('chatMessageDeleted', this.onMessageDeleted);
     this._eventEmitter.on('chatMessageEdited', (message: ChatMessage) => void this.onMessageEdited(message));
-    this._eventEmitter.on('disconnected', (permanent: boolean) => {
+    this._eventEmitter.on('disconnected', () => {
       this.notifyStateChange((draft: GraphChatListClient) => {
         draft.status = 'server connection lost';
-        draft.permanentDisconnect = permanent;
         draft.chatThreads = [];
       });
     });

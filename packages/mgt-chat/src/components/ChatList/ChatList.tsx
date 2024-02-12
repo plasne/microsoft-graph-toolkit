@@ -175,15 +175,20 @@ export const ChatList = ({
         onConnectionChanged(false);
       }
     });
+  }, [chatListClient, onMessageReceived, onLoaded, onConnectionChanged]);
 
-    // tear down
-    return () => {
-      // log state of chatlistclient for debugging purposes
-      log(chatListClient.getState());
-      chatListClient.offStateChange(setChatListState);
-      chatListClient.tearDown();
-    };
-  }, [chatListClient, onMessageReceived, onLoaded]);
+  // this only runs once when the component is unmounted
+  useEffect(() => {
+    if (chatListClient) {
+      // tear down
+      return () => {
+        // log state of chatlistclient for debugging purposes
+        log('ChatList unmounted.', chatListClient.getState());
+        chatListClient.offStateChange(setChatListState);
+        chatListClient.tearDown();
+      };
+    }
+  }, []);
 
   const markThreadAsRead = (chatThread: string) => {
     const markedChatThreads = chatListClient?.markChatThreadsAsRead([chatThread]);
@@ -225,25 +230,21 @@ export const ChatList = ({
     onClick: () => markAllThreadsAsRead(chatListState?.chatThreads)
   };
 
-  const isLoading = [
-    'creating server connections',
-    'server connection established',
-    'subscribing to notifications',
-    'loading messages'
-  ].includes(chatListState?.status ?? '');
+  const isLoading = ['creating server connections', 'subscribing to notifications', 'loading messages'].includes(
+    chatListState?.status ?? ''
+  );
 
   const targetElementRef = useRef(null);
 
   useEffect(() => {
-    const handleIntersection = async (entries: IntersectionObserverEntry[]) => {
+    const handleIntersection = (entries: IntersectionObserverEntry[]) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
           // The element has come into view, you can perform your actions here
-          if (!loadingRef.current) {
+          if (chatListClient && !loadingRef.current) {
             // Prevent the function from being called multiple times
             if (chatListState?.moreChatThreadsToLoad) {
-              loadingRef.current = true;
-              await chatListClient?.loadMoreChatThreads();
+              void chatListClient.loadMoreChatThreads().then(() => (loadingRef.current = true));
             }
           }
         }
@@ -312,14 +313,8 @@ export const ChatList = ({
                     subheading={CreateANewChat}
                   ></Error>
                 )}
-                {chatListState?.status === 'server connection lost' && chatListState?.permanentDisconnect === false && (
+                {chatListState?.status === 'server connection lost' && (
                   <Error message="We ran into a problem. Reconnecting..." subheading={OpenTeamsLinkError}></Error>
-                )}
-                {chatListState?.status === 'server connection lost' && chatListState?.permanentDisconnect === true && (
-                  <Error
-                    message="We ran into a problem. Please close or refresh."
-                    subheading={OpenTeamsLinkError}
-                  ></Error>
                 )}
               </div>
             </>
