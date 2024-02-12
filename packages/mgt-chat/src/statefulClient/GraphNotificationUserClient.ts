@@ -62,9 +62,7 @@ export class GraphNotificationUserClient {
   private userId = '';
   private currentUserId = '';
   private lastNotificationUrl = '';
-  private get sessionId() {
-    return 'default';
-  }
+
   private readonly subscriptionCache: SubscriptionsCache = new SubscriptionsCache();
   private readonly timer = new Timer();
   private get graph() {
@@ -186,7 +184,7 @@ export class GraphNotificationUserClient {
     ).toISOString();
     const subscriptionDefinition: Subscription = {
       changeType: changeTypes.join(','),
-      notificationUrl: `${GraphConfig.webSocketsPrefix}?groupId=${userId}&sessionId=${this.sessionId}`,
+      notificationUrl: `${GraphConfig.webSocketsPrefix}?groupId=${userId}&sessionId=default`,
       resource: resourcePath,
       expirationDateTime,
       includeResourceData: true,
@@ -225,7 +223,7 @@ export class GraphNotificationUserClient {
     let isRenewalInError = false;
 
     try {
-      let subscription = await this.getSubscription(this.currentUserId, this.sessionId);
+      let subscription = await this.getSubscription(this.currentUserId);
 
       if (subscription) {
         if (!subscription.expirationDateTime || !subscription.id) {
@@ -246,7 +244,7 @@ export class GraphNotificationUserClient {
           // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
           if ((renewalEx as { statusCode?: number }).statusCode === 404) {
             log('Removing subscription from cache');
-            await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId, this.sessionId);
+            await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId);
             subscription = undefined;
           } else {
             // log and continue (we will try again later)
@@ -301,8 +299,8 @@ export class GraphNotificationUserClient {
     this.renewalInterval = this.timer.setTimeout(this.renewalSync, appSettings.renewalTimerInterval * 1000);
   };
 
-  private async getSubscription(userId: string, sessionId: string): Promise<Subscription | undefined> {
-    const subscriptions = (await this.subscriptionCache.loadSubscriptions(userId, sessionId))?.subscriptions || [];
+  private async getSubscription(userId: string): Promise<Subscription | undefined> {
+    const subscriptions = (await this.subscriptionCache.loadSubscriptions(userId))?.subscriptions || [];
     return subscriptions.length > 0 ? subscriptions[0] : undefined;
   }
 
