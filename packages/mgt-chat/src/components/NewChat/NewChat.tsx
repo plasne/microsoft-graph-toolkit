@@ -49,6 +49,14 @@ const useStyles = makeStyles({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gridColumnGap: '8px'
+  },
+  sendIconContainer: {
+    display: 'flex',
+    alignItems: 'center'
+  },
+  sendIcon: {
+    color: 'var(--colorBrandForeground2)',
+    cursor: 'pointer'
   }
 });
 
@@ -126,9 +134,9 @@ const NewChat: FC<NewChatProps> = ({ mode = 'auto', enableToLabel, onChatCreated
             <Button appearance="secondary" onClick={onCancelClicked}>
               Cancel
             </Button>
-            <Button appearance="primary" onClick={createChat}>
-              <Send24Regular />
-            </Button>
+            <div className={styles.sendIconContainer}>
+              <Send24Regular className={styles.sendIcon} onClick={createChat} />
+            </div>
           </div>
         </div>
       ) : (
