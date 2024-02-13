@@ -25,6 +25,7 @@ import { GraphConfig } from './GraphConfig';
 import { SubscriptionsCache, ComponentType } from './Caching/SubscriptionCache';
 import { Timer } from '../utils/Timer';
 import { getOrGenerateGroupId } from './getOrGenerateGroupId';
+import { v4 as uuid } from 'uuid';
 
 export const appSettings = {
   defaultSubscriptionLifetimeInMinutes: 10,
@@ -319,6 +320,16 @@ export class GraphNotificationUserClient {
     return subscriptions.length > 0 ? subscriptions[0] : undefined;
   }
 
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = uuid();
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+    log(`ChatList session Id: ${sessionId}`);
+    return sessionId;
+  }
+
   private readonly renewSubscription = async (userId: string, subscription: Subscription): Promise<void> => {
     this.renewalCount++;
     log(`Renewing Graph subscription for ChatList. RenewalCount: ${this.renewalCount}.`);
@@ -344,7 +355,7 @@ export class GraphNotificationUserClient {
     };
 
     const connection = new HubConnectionBuilder()
-      .withUrl(GraphConfig.adjustNotificationUrl(notificationUrl), connectionOptions)
+      .withUrl(GraphConfig.adjustNotificationUrl(notificationUrl, this.getSessionId()), connectionOptions)
       .configureLogging(LogLevel.Information)
       .build();
 
