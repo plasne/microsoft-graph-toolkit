@@ -320,14 +320,9 @@ export class GraphNotificationUserClient {
     return subscriptions.length > 0 ? subscriptions[0] : undefined;
   }
 
+  // this is used to create a unique session id for the web socket connection
   private getSessionId(): string {
-    let sessionId = sessionStorage.getItem('sessionId');
-    if (!sessionId) {
-      sessionId = uuid();
-      sessionStorage.setItem('sessionId', sessionId);
-    }
-    log(`ChatList session Id: ${sessionId}`);
-    return sessionId;
+    return uuid();
   }
 
   private readonly renewSubscription = async (userId: string, subscription: Subscription): Promise<void> => {
