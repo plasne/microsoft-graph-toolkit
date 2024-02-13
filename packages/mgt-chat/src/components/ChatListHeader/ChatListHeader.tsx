@@ -12,9 +12,10 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     rowGap: 0,
     zIndex: 3,
-    paddingLeft: '30px',
-    paddingRight: '30px',
-    paddingBlockEnd: '12px'
+    paddingTop: '8px',
+    paddingLeft: '10px',
+    paddingRight: '10px',
+    paddingBlockEnd: '8px'
   },
   controlsContainer: {
     display: 'flex',

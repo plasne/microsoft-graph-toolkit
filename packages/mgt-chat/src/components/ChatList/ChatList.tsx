@@ -38,26 +38,11 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100%',
     ...shorthands.overflow('hidden'),
-    paddingBlockEnd: '12px'
+    paddingBlockEnd: '12px',
+    overflowY: 'scroll'
   },
   chatListItems: {
-    height: '100%',
-    ...shorthands.paddingInline('20px'),
-    '&': {
-      paddingRight: '8px' // reserved some space for the scrollbar
-    },
-    '&:hover': {
-      paddingRight: '0', // we got the scrollbar, no need to reserve space
-      ...shorthands.overflow('auto'),
-      scrollbarWidth: 'auto'
-    },
-    '&:hover::-webkit-scrollbar': {
-      width: '8px'
-    },
-    '&:hover::-webkit-scrollbar-thumb': {
-      backgroundColor: 'darkgrey',
-      'border-radius': '5px'
-    }
+    height: '100%'
   },
   fullHeight: {
     height: '100%'
