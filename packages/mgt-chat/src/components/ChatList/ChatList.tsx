@@ -123,9 +123,11 @@ export const ChatList = ({
   }, [chatListClient, chatThreadsPerPage, selectedChatId]);
 
   useEffect(() => {
-    setChatListActions({
-      markAllChatThreadsAsRead: () => chatListClient?.markAllChatThreadsAsRead()
-    });
+    if (chatListClient) {
+      setChatListActions({
+        markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()
+      });
+    }
   }, [chatListClient]);
 
   // Store last read time in cache so that when the user comes back to the chat list,
