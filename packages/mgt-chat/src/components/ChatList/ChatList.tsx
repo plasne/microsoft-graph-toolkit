@@ -43,7 +43,8 @@ const useStyles = makeStyles({
   },
   chatListItems: {
     height: '100%',
-    visibility: 'visible'
+    visibility: 'visible',
+    paddingRight: '2px'
   },
   scrollbox: {
     ...shorthands.overflow('auto'),
