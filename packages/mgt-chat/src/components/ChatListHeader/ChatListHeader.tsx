@@ -10,11 +10,10 @@ const useStyles = makeStyles({
   headerContainer: {
     display: 'flex',
     width: '100%',
-    flexDirection: 'column',
+    flexDirection: 'row',
     rowGap: 0,
     zIndex: 3,
-    paddingLeft: '30px',
-    paddingRight: '30px',
+    paddingLeft: '10px',
     paddingBlockEnd: '12px'
   },
   controlsContainer: {
