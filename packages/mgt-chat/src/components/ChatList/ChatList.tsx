@@ -4,7 +4,7 @@ import { MgtTemplateProps, ProviderState, Providers, Spinner, log } from '@micro
 import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
 import { FluentThemeProvider } from '@azure/communication-react';
 import { FluentTheme } from '@fluentui/react';
-import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
+import { ChatMessage } from '@microsoft/microsoft-graph-types';
 import {
   StatefulGraphChatListClient,
   GraphChatListClient,
@@ -18,10 +18,11 @@ import { LoadingMessagesErrorIcon } from '../Error/LoadingMessageErrorIcon';
 import { CreateANewChat } from '../Error/CreateANewChat';
 import { PleaseSignIn } from '../Error/PleaseSignIn';
 import { OpenTeamsLinkError } from '../Error/OpenTeams';
+import IChatListActions from '../ChatListHeader/IChatListActions';
 
 export interface IChatListProps {
-  onSelected: (e: GraphChat) => void;
-  onUnselected?: (e: GraphChat) => void;
+  onSelected: (e: GraphChatThread) => void;
+  onUnselected?: (e: GraphChatThread) => void;
   onLoaded?: (e: GraphChatThread[]) => void;
   onAllMessagesRead: (e: string[]) => void;
   buttonItems?: ChatListButtonItem[];
@@ -79,6 +80,8 @@ export const ChatList = ({
   onAllMessagesRead,
   onLoaded,
   onConnectionChanged,
+  onSelected,
+  onUnselected,
   chatThreadsPerPage,
   ...props
 }: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
@@ -86,14 +89,14 @@ export const ChatList = ({
 
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
-  const [internalSelectedChatId, setInternalSelectedChatId] = useState<string | undefined>();
+  const [chatListActions, setChatListActions] = useState<IChatListActions | undefined>();
   const loadingRef = useRef(false);
   // wait for provider to be ready before setting client and state
   useEffect(() => {
     const provider = Providers.globalProvider;
     const conditionalLoad = (state: ProviderState | undefined) => {
       if (state === ProviderState.SignedIn && !chatListClient) {
-        const client = new StatefulGraphChatListClient(chatThreadsPerPage);
+        const client = new StatefulGraphChatListClient(chatThreadsPerPage, selectedChatId);
         setChatListClient(client);
         setChatListState(client.getState());
       }
@@ -102,30 +105,28 @@ export const ChatList = ({
       conditionalLoad(evt.detail);
     });
     conditionalLoad(provider?.state);
-  }, [chatListClient, chatThreadsPerPage]);
+  }, [chatListClient, chatThreadsPerPage, selectedChatId]);
 
-  // if selected chat id is changed, update the internal state
-  // NOTE: Decoupling this ensures that the app can change the selection but the chat
-  // list can also change the selection without a full re - render.
   useEffect(() => {
-    setInternalSelectedChatId(selectedChatId);
-  }, [selectedChatId]);
+    if (chatListClient) {
+      setChatListActions({
+        markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()
+      });
+    }
+  }, [chatListClient]);
 
   // Store last read time in cache so that when the user comes back to the chat list,
   // we know what messages they are likely to have not read. This is not perfect because
   // the user could have read messages in another client (for instance, the Teams client).
   useEffect(() => {
     const timer = setInterval(() => {
-      if (internalSelectedChatId) {
-        log(`caching the last-read timestamp of now to chat ID '${internalSelectedChatId}'...`);
-        chatListClient?.cacheLastReadTime([internalSelectedChatId]);
-      }
+      chatListClient?.cacheLastReadTime('selected');
     }, lastReadTimeInterval);
 
     return () => {
       clearInterval(timer);
     };
-  }, [chatListClient, internalSelectedChatId, lastReadTimeInterval]);
+  }, [chatListClient, lastReadTimeInterval]);
 
   useEffect(() => {
     // shortcut if we don't have a chat list client
@@ -136,16 +137,30 @@ export const ChatList = ({
     // handle state changes
     chatListClient.onStateChange(setChatListState);
     chatListClient.onStateChange(state => {
-      if (state.status === 'chat message received') {
-        if (onMessageReceived && state.chatMessage) {
-          onMessageReceived(state.chatMessage);
-        }
+      if (state.status === 'chat message received' && onMessageReceived && state.chatMessage) {
+        onMessageReceived(state.chatMessage);
+      }
+
+      if (state.status === 'chat selected' && onSelected && state.internalSelectedChat) {
+        onSelected(state.internalSelectedChat);
+      }
+
+      if (state.status === 'chat unselected' && onUnselected && state.internalPrevSelectedChat) {
+        onUnselected(state.internalPrevSelectedChat);
+      }
+
+      if (state.status === 'chats read' && onAllMessagesRead && state.chatThreads) {
+        onAllMessagesRead(state.chatThreads.map(c => c.id!));
       }
 
       if (state.status === 'chats loaded' && onLoaded) {
         onLoaded(state?.chatThreads ?? []);
         // the loadingRef is used to prevent multiple calls to loadMoreChatThreads
         loadingRef.current = false;
+      }
+
+      if (state.status === 'chats loaded' && state.initialSelectedChatSet && onSelected && state.internalSelectedChat) {
+        onSelected(state.internalSelectedChat);
       }
 
       if (state.status === 'no chats' && onLoaded) {
@@ -160,7 +175,7 @@ export const ChatList = ({
         onConnectionChanged(false);
       }
     });
-  }, [chatListClient, onMessageReceived, onLoaded, onConnectionChanged]);
+  }, [chatListClient, onLoaded, onMessageReceived, onSelected, onUnselected, onAllMessagesRead, onConnectionChanged]);
 
   // this only runs once when the component is unmounted
   useEffect(() => {
@@ -175,45 +190,12 @@ export const ChatList = ({
     }
   }, []);
 
-  const markThreadAsRead = (chatThread: string) => {
-    const markedChatThreads = chatListClient?.markChatThreadsAsRead([chatThread]);
-    if (markedChatThreads) {
-      chatListClient?.cacheLastReadTime(markedChatThreads);
-    }
-  };
-
-  const onClickChatListItem = (chatListItem: GraphChat) => {
-    // trigger an unselect event for the previously selected item
-    if (internalSelectedChatId && props.onUnselected) {
-      const previouslySelectedChatListItem = chatListState?.chatThreads.filter(c => c.id === internalSelectedChatId);
-      if (previouslySelectedChatListItem?.length === 1) {
-        props.onUnselected(previouslySelectedChatListItem[0]);
-      }
-    }
-
-    // select a new item
-    markThreadAsRead(chatListItem.id!);
-    setInternalSelectedChatId(chatListItem.id);
-    props.onSelected(chatListItem);
+  const onClickChatListItem = (chat: GraphChatThread) => {
+    chatListClient?.setInternalSelectedChat(chat);
   };
 
   const chatListButtonItems = props.buttonItems === undefined ? [] : props.buttonItems;
-
-  const markAllThreadsAsRead = (chatThreads: GraphChat[] | undefined) => {
-    if (!chatThreads) {
-      return;
-    }
-    const readChatThreads = chatThreads.map(c => c.id!);
-    const markedChatThreads = chatListClient?.markChatThreadsAsRead(readChatThreads);
-    if (markedChatThreads) {
-      chatListClient?.cacheLastReadTime(markedChatThreads);
-      onAllMessagesRead(markedChatThreads);
-    }
-  };
-  const markAllAsRead = {
-    displayText: 'Mark all as read',
-    onClick: () => markAllThreadsAsRead(chatListState?.chatThreads)
-  };
+  const chatListMenuItems = props.menuItems === undefined ? [] : props.menuItems;
 
   const isLoading = ['creating server connections', 'subscribing to notifications', 'loading messages'].includes(
     chatListState?.status ?? ''
@@ -254,10 +236,12 @@ export const ChatList = ({
       <FluentProvider theme={webLightTheme} className={styles.fullHeight}>
         <div className={styles.chatList}>
           {Providers.globalProvider?.state === ProviderState.SignedIn &&
-            chatListState?.status !== 'server connection lost' && (
+            chatListState?.status !== 'server connection lost' &&
+            chatListActions && (
               <ChatListHeader
+                actions={chatListActions}
                 buttonItems={chatListButtonItems}
-                menuItems={[markAllAsRead, ...(props.menuItems ?? [])]}
+                menuItems={chatListMenuItems}
               />
             )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
@@ -269,8 +253,8 @@ export const ChatList = ({
                       key={c.id}
                       chat={c}
                       myId={chatListState.userId}
-                      isSelected={c.id === internalSelectedChatId}
-                      isRead={c.id === internalSelectedChatId || c.isRead}
+                      isSelected={c.id === chatListState?.internalSelectedChat?.id}
+                      isRead={c.isRead}
                     />
                   </Button>
                 ))}
