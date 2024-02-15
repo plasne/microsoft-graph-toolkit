@@ -231,7 +231,7 @@ export const ChatList = ({
     const observer = new IntersectionObserver(handleIntersection, {
       root: null, // observing intersections with the viewport
       rootMargin: '0px',
-      threshold: 0.1 // Callback is invoked when 10% of the target is visible
+      threshold: 0.03 // Callback is invoked when 3% of the target is visible
     });
 
     if (targetElementRef.current) {
