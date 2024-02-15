@@ -10,7 +10,7 @@ const useStyles = makeStyles({
   headerContainer: {
     display: 'flex',
     width: '100%',
-    flexDirection: 'column',
+    flexDirection: 'row',
     rowGap: 0,
     zIndex: 3,
     paddingTop: '8px',
