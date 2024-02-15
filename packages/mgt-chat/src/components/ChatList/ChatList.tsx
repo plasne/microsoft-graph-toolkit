@@ -39,11 +39,21 @@ const useStyles = makeStyles({
     flexDirection: 'column',
     height: '100%',
     ...shorthands.overflow('hidden'),
-    paddingBlockEnd: '12px',
-    overflowY: 'scroll'
+    paddingBlockEnd: '12px'
   },
   chatListItems: {
-    height: '100%'
+    height: '100%',
+    visibility: 'visible'
+  },
+  scrollbox: {
+    ...shorthands.overflow('auto'),
+    visibility: 'hidden',
+    ':hover': {
+      visibility: 'visible'
+    },
+    ':focus': {
+      visibility: 'visible'
+    }
   },
   fullHeight: {
     height: '100%'
@@ -246,23 +256,25 @@ export const ChatList = ({
             )}
           {chatListState && chatListState.chatThreads.length > 0 ? (
             <>
-              <div className={styles.chatListItems}>
-                {chatListState?.chatThreads.map(c => (
-                  <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
-                    <ChatListItem
-                      key={c.id}
-                      chat={c}
-                      myId={chatListState.userId}
-                      isSelected={c.id === chatListState?.internalSelectedChat?.id}
-                      isRead={c.isRead}
-                    />
-                  </Button>
-                ))}
-                {chatListState?.moreChatThreadsToLoad && (
-                  <div ref={targetElementRef} className={styles.bottomWhitespace}>
-                    &nbsp;
-                  </div>
-                )}
+              <div className={styles.scrollbox}>
+                <div className={styles.chatListItems}>
+                  {chatListState?.chatThreads.map(c => (
+                    <Button className={styles.button} key={c.id} onClick={() => onClickChatListItem(c)}>
+                      <ChatListItem
+                        key={c.id}
+                        chat={c}
+                        myId={chatListState.userId}
+                        isSelected={c.id === chatListState?.internalSelectedChat?.id}
+                        isRead={c.isRead}
+                      />
+                    </Button>
+                  ))}
+                  {chatListState?.moreChatThreadsToLoad && (
+                    <div ref={targetElementRef} className={styles.bottomWhitespace}>
+                      &nbsp;
+                    </div>
+                  )}
+                </div>
               </div>
             </>
           ) : (
