@@ -33,6 +33,9 @@ export class LastReadCache {
         // from getCacheId to remove the cache/db. If the id has no dashes, it will not be removed.
         return `mgt-lastreadcache-${id.replace(/-/g, '')}`;
       }
+
+      // needed for build error
+      throw new Error('CacheId is not available');
     };
     return cache;
   }
