@@ -14,16 +14,39 @@ export const ChatAddIcon = (): JSX.Element => {
 };
 
 function App() {
-  const [chatId, setChatId] = useState<string>('');
+  let sessionChatId = sessionStorage.getItem('chatId') ?? '';
+  console.log('sessionChatId: ', sessionChatId);
+
+  const [chatId, setChatId] = useState<string>(sessionChatId);
   const [showNewChat, setShowNewChat] = useState<boolean>(false);
+  // we are using a different state to track the selected chat id fired from chat list.
+  const [selectedChatListChatId, setSelectedChatListChatId] = useState<string>('');
+
+  sessionStorage.clear();
+
+  const saveChatAndRefresh = () => {
+    if (chatId !== '') {
+      console.log('setting chatId: ', chatId);
+      sessionStorage.setItem('chatId', chatId);
+      // force a page refesh, this will test setting the initial chat id.
+      window.location.reload();
+    }
+  };
+
+  const clearSelectedChat = () => {
+    setChatId('');
+    setSelectedChatListChatId('');
+  };
 
   const onChatSelected = useCallback((e: GraphChatThread) => {
     console.log('Selected: ', e.id);
     setChatId(e.id ?? '');
+    setSelectedChatListChatId(e.id ?? '');
   }, []);
 
   const onChatCreated = useCallback((chat: GraphChat) => {
     setChatId(chat.id ?? '');
+    setSelectedChatListChatId(chat.id ?? '');
     setShowNewChat(false);
   }, []);
 
@@ -74,11 +97,15 @@ function App() {
       </header>
       <main className="main">
         <div className="chat-selector">
+          <button onClick={() => saveChatAndRefresh()}>Save selected chat and refresh</button>
           <br />
-          <button onClick={() => setChatId('')}>Clear selected chat</button>
+          <button onClick={() => clearSelectedChat()}>Clear selected chat</button>
           <br />
           <button onClick={() => setShowNewChat(true)}>New Chat</button>
-          Selected chat: {chatId}
+          <br />
+          Selected chat id: {chatId}
+          <br />
+          Selected chatlist chat id: {selectedChatListChatId}
           <br />
           {showNewChat && (
             <div className="new-chat">
@@ -88,6 +115,7 @@ function App() {
         </div>
         <div className="chatlist-pane">
           <ChatList
+            selectedChatId={chatId}
             onLoaded={onLoaded}
             chatThreadsPerPage={10}
             menuItems={menus}
@@ -100,7 +128,7 @@ function App() {
           />
         </div>
         {/* NOTE: removed the chatId guard as this case has an error state. */}
-        <div className="chat-pane">{<Chat chatId={chatId} />}</div>
+        <div className="chat-pane">{<Chat chatId={selectedChatListChatId} />}</div>
       </main>
     </div>
   );

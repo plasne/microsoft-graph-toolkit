@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ChatListItem } from '../ChatListItem/ChatListItem';
-import { MgtTemplateProps, ProviderState, Providers, Spinner, log } from '@microsoft/mgt-react';
+import { MgtTemplateProps, ProviderState, Providers, Spinner, log, error } from '@microsoft/mgt-react';
 import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
 import { FluentThemeProvider } from '@azure/communication-react';
 import { FluentTheme } from '@fluentui/react';
@@ -116,7 +116,7 @@ export const ChatList = ({
     const provider = Providers.globalProvider;
     const conditionalLoad = (state: ProviderState | undefined) => {
       if (state === ProviderState.SignedIn && !chatListClient) {
-        const client = new StatefulGraphChatListClient(chatThreadsPerPage, selectedChatId);
+        const client = new StatefulGraphChatListClient();
         setChatListClient(client);
         setChatListState(client.getState());
       }
@@ -125,7 +125,7 @@ export const ChatList = ({
       conditionalLoad(evt.detail);
     });
     conditionalLoad(provider?.state);
-  }, [chatListClient, chatThreadsPerPage, selectedChatId]);
+  }, [chatListClient]);
 
   useEffect(() => {
     if (chatListClient) {
@@ -134,6 +134,28 @@ export const ChatList = ({
       });
     }
   }, [chatListClient]);
+
+  useEffect(() => {
+    if (chatListClient) {
+      if (chatThreadsPerPage < 1) {
+        error('chatThreadsPerPage must be greater than 0!');
+        return;
+      }
+
+      // todo: implement a upperbound limit for chatThreadsPerPage
+      chatListClient.chatThreadsPerPage = chatThreadsPerPage;
+    }
+  }, [chatListClient, chatThreadsPerPage]);
+
+  useEffect(() => {
+    if (chatListClient) {
+      if (!selectedChatId) {
+        chatListClient.clearSelectedChat();
+      } else {
+        chatListClient.setSelectedChatId(selectedChatId);
+      }
+    }
+  }, [chatListClient, selectedChatId]);
 
   // Store last read time in cache so that when the user comes back to the chat list,
   // we know what messages they are likely to have not read. This is not perfect because
@@ -182,7 +204,7 @@ export const ChatList = ({
         loadingRef.current = false;
       }
 
-      if (state.status === 'chats loaded' && state.initialSelectedChatSet && onSelected && state.internalSelectedChat) {
+      if (state.status === 'chats loaded' && state.fireOnSelected && onSelected && state.internalSelectedChat) {
         onSelected(state.internalSelectedChat);
       }
 
@@ -214,7 +236,7 @@ export const ChatList = ({
   }, []);
 
   const onClickChatListItem = (chat: GraphChatThread) => {
-    chatListClient?.setInternalSelectedChat(chat);
+    chatListClient?.setSelectedChat(chat);
   };
 
   const chatListButtonItems = props.buttonItems === undefined ? [] : props.buttonItems;
