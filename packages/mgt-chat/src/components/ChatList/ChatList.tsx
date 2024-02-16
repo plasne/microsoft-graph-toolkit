@@ -49,6 +49,15 @@ const useStyles = makeStyles({
   scrollbox: {
     ...shorthands.overflow('auto'),
     visibility: 'hidden',
+    '::-webkit-scrollbar': {
+      width: '8px'
+    },
+    '::-webkit-scrollbar-track': {
+      backgroundColor: 'transparent'
+    },
+    '::-webkit-scrollbar-thumb': {
+      backgroundColor: '#a0a0a0'
+    },
     ':hover': {
       visibility: 'visible'
     },
