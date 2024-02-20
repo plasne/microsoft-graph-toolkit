@@ -274,7 +274,7 @@ export const ChatList = ({
     }
 
     return () => observer.disconnect();
-  }, [chatListState]);
+  }, [chatListClient, chatListState]);
 
   return (
     <FluentThemeProvider fluentTheme={FluentTheme}>
