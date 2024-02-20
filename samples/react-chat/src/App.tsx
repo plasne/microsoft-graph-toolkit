@@ -18,6 +18,7 @@ function App() {
   console.log('sessionChatId: ', sessionChatId);
 
   const [chatId, setChatId] = useState<string>(sessionChatId);
+  const [chatThreadsPerPage, setChatThreadsPerPage] = useState<number>(10);
   const [showNewChat, setShowNewChat] = useState<boolean>(false);
   // we are using a different state to track the selected chat id fired from chat list.
   const [selectedChatListChatId, setSelectedChatListChatId] = useState<string>('');
@@ -88,6 +89,10 @@ function App() {
     console.log('Unselected: ', chatThread.id);
   }, []);
 
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLSelectElement>) => {
+    setChatThreadsPerPage(parseInt(event.target.value));
+  }, []);
+
   return (
     <div className="App">
       <header className="App-header">
@@ -100,6 +105,16 @@ function App() {
           <button onClick={() => saveChatAndRefresh()}>Save selected chat and refresh</button>
           <br />
           <button onClick={() => clearSelectedChat()}>Clear selected chat</button>
+          <br />
+          <select value={chatThreadsPerPage} onChange={handleChange}>
+            <option value="5">5</option>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="70">70</option>
+          </select>
+          <br />
+          Chat threads per page: {chatThreadsPerPage}
           <br />
           <button onClick={() => setShowNewChat(true)}>New Chat</button>
           <br />
@@ -117,7 +132,7 @@ function App() {
           <ChatList
             selectedChatId={chatId}
             onLoaded={onLoaded}
-            chatThreadsPerPage={10}
+            chatThreadsPerPage={chatThreadsPerPage}
             menuItems={menus}
             buttonItems={buttons}
             onSelected={onChatSelected}
