@@ -222,7 +222,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
         return;
       }
 
-      if (items.length < maxItems && handlerNextLink && handlerNextLink !== '') {
+      if (items.length < maxItems && handlerNextLink) {
         await this.loadAndAppendChatThreads(handlerNextLink, items, maxItems);
         return;
       }
@@ -230,7 +230,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
       this.handleChatThreads(items, handlerNextLink);
     };
 
-    if (nextLink === '') {
+    if (!nextLink) {
       // max page count cannot exceed 50 per documentation
       const pageCount = maxItems > 50 ? 50 : maxItems;
       loadChatThreads(this._graph, pageCount).then(handler, err => error(err));
@@ -602,9 +602,9 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this.notifyStateChange((draft: GraphChatListClient) => {
       draft.status = chatThreads.length > 0 ? 'chats loaded' : 'no chats';
       draft.chatThreads = chatThreads;
-      draft.moreChatThreadsToLoad = nextLink !== undefined && nextLink !== '';
+      draft.moreChatThreadsToLoad = Boolean(nextLink);
       draft.fireOnSelected = false;
-      if (this._initialSelectedChatId && this._initialSelectedChatId !== '') {
+      if (this._initialSelectedChatId) {
         // again, we expect this code to only run once, during the init of ChatList component if and only if _initialSelectedChatId is set.
         const toFindId = this._initialSelectedChatId;
         const chat = chatThreads.find(c => c.id === toFindId);
@@ -679,7 +679,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
    * @memberof StatefulGraphChatListClient
    */
   private async updateUserSubscription(userId: string) {
-    if (userId === '') return;
+    if (!userId) return;
 
     // reset state to initial
     this.notifyStateChange((draft: GraphChatListClient) => {
