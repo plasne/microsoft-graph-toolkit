@@ -107,6 +107,7 @@ export const ChatList = ({
 }: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
 
+  const [initialLastReadTimeInterval, setInitialLastReadTimeInterval] = useState<number | undefined>();
   const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [chatListActions, setChatListActions] = useState<IChatListActions | undefined>();
@@ -163,6 +164,19 @@ export const ChatList = ({
   useEffect(() => {
     // setup timer only after we have a defined chatListClient
     if (chatListClient) {
+      if (initialLastReadTimeInterval) {
+        error('lastReadTimeInterval can only be set once.');
+        return;
+      }
+
+      if (lastReadTimeInterval < 1) {
+        error('lastReadTimeInterval must be greater than 0!');
+        return;
+      }
+
+      // todo: implement a upperbound limit for lastReadTimeInterval
+      setInitialLastReadTimeInterval(lastReadTimeInterval);
+
       const timer = setInterval(() => {
         chatListClient.cacheLastReadTime('selected');
       }, lastReadTimeInterval);
