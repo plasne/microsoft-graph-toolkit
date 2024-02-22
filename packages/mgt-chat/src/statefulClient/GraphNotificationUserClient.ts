@@ -62,7 +62,6 @@ export class GraphNotificationUserClient {
   private isRewnewalInProgress = false;
   private wasConnected?: boolean | undefined;
   private userId = '';
-  private currentUserId = '';
   private lastNotificationUrl = '';
 
   private readonly subscriptionCache: SubscriptionsCache = new SubscriptionsCache();
@@ -221,13 +220,13 @@ export class GraphNotificationUserClient {
     }
 
     this.isRewnewalInProgress = true;
-    this.currentUserId = this.userId;
+    const currentUserId = this.userId;
 
     let isRenewalInError = false;
     let nextRenewalTimeInMs = appSettings.renewalTimerInterval * 1000;
 
     try {
-      let subscription = await this.getSubscription(this.currentUserId);
+      let subscription = await this.getSubscription(currentUserId);
 
       if (subscription) {
         if (!subscription.expirationDateTime || !subscription.id) {
@@ -241,14 +240,14 @@ export class GraphNotificationUserClient {
           const diff = Math.round((expirationTime.getTime() - now.getTime()) / 1000);
 
           if (diff <= appSettings.renewalThreshold) {
-            await this.renewSubscription(this.currentUserId, subscription);
+            await this.renewSubscription(currentUserId, subscription);
           }
         } catch (renewalEx) {
           isRenewalInError = true;
           // this error indicates we are not able to successfully renew the subscription, so we should create a new one.
           if ((renewalEx as { statusCode?: number }).statusCode === 404) {
             log('Removing subscription from cache');
-            await this.subscriptionCache.deleteCachedSubscriptions(this.currentUserId);
+            await this.subscriptionCache.deleteCachedSubscriptions(currentUserId);
             subscription = undefined;
           } else {
             // log and continue (we will try again later)
@@ -259,14 +258,15 @@ export class GraphNotificationUserClient {
 
       if (!subscription) {
         try {
-          subscription = await this.createSubscription(this.currentUserId);
+          subscription = await this.createSubscription(currentUserId);
         } catch (e) {
           subscription = undefined;
           isRenewalInError = true;
           error(e);
 
-          // rather than 3 seconds, back off to 10 seconds if we get a 403
-          if ((e as { statusCode?: number }).statusCode === 403) {
+          // rather than 3 seconds, back off to 10 seconds if we get a "403" which should really be a 429 - this happens when we reached subscription limit of 10
+          const err = e as { statusCode?: number; message: string };
+          if (err.statusCode === 403 && err.message.indexOf("has reached its limit of '10'") > 0) {
             nextRenewalTimeInMs = 10 * 1000;
           }
         }
