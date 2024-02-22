@@ -268,7 +268,7 @@ export class GraphNotificationUserClient {
           const err = e as { statusCode?: number; message: string };
           if (err.statusCode === 403) {
             // rather than 3 seconds, back off to 10 seconds if we get a "403" which should really be a 429 - this happens when we reached subscription limit of 10
-            if (err.message.indexOf("has reached its limit of '10'") > 0) {
+            if (err.message.indexOf('has reached its limit') > 0) {
               nextRenewalTimeInMs = 10 * 1000;
             } else {
               // if true 403, stop renewal
