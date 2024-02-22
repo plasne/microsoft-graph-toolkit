@@ -224,6 +224,7 @@ export class GraphNotificationUserClient {
 
     let isRenewalInError = false;
     let nextRenewalTimeInMs = appSettings.renewalTimerInterval * 1000;
+    let permenantRenewalError = false;
 
     try {
       let subscription = await this.getSubscription(currentUserId);
@@ -264,10 +265,15 @@ export class GraphNotificationUserClient {
           isRenewalInError = true;
           error(e);
 
-          // rather than 3 seconds, back off to 10 seconds if we get a "403" which should really be a 429 - this happens when we reached subscription limit of 10
           const err = e as { statusCode?: number; message: string };
-          if (err.statusCode === 403 && err.message.indexOf("has reached its limit of '10'") > 0) {
-            nextRenewalTimeInMs = 10 * 1000;
+          if (err.statusCode === 403) {
+            // rather than 3 seconds, back off to 10 seconds if we get a "403" which should really be a 429 - this happens when we reached subscription limit of 10
+            if (err.message.indexOf("has reached its limit of '10'") > 0) {
+              nextRenewalTimeInMs = 10 * 1000;
+            } else {
+              // if true 403, stop renewal
+              permenantRenewalError = true;
+            }
           }
         }
       }
@@ -275,6 +281,7 @@ export class GraphNotificationUserClient {
       // notificationUrl comes in the form of websockets:https://graph.microsoft.com/beta/subscriptions/notificationChannel/websockets/<Id>?groupid=<UserId>&sessionid=default
       // if <Id> changes, we need to create a new connection
       if (
+        !permenantRenewalError &&
         subscription &&
         (!this.connection ||
           this.connection.state !== HubConnectionState.Connected ||
@@ -312,7 +319,10 @@ export class GraphNotificationUserClient {
     }
 
     this.isRewnewalInProgress = false;
-    this.renewalInterval = this.timer.setTimeout(this.renewalSync, nextRenewalTimeInMs);
+
+    if (!permenantRenewalError) {
+      this.renewalInterval = this.timer.setTimeout(this.renewalSync, nextRenewalTimeInMs);
+    }
   };
 
   private async getSubscription(userId: string): Promise<Subscription | undefined> {
