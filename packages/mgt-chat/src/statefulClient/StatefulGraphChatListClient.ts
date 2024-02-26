@@ -147,6 +147,18 @@ export type GraphChatMessage = Message & {
   rawChatUrl: string;
 };
 
+const GraphChatThreadLastMsgPreviewCreatedComparator = (a: GraphChatThread, b: GraphChatThread): number => {
+  if (a.lastMessagePreview?.createdDateTime && b.lastMessagePreview?.createdDateTime) {
+    const dateA = new Date(a.lastMessagePreview.createdDateTime);
+    const dateB = new Date(b.lastMessagePreview.createdDateTime);
+    if (dateA === dateB) return 0;
+    return dateB > dateA ? 1 : -1;
+  } else if (b.lastMessagePreview?.createdDateTime) {
+    return 1;
+  }
+  return -1;
+};
+
 export interface ChatListEvent {
   type:
     | 'chatMessageReceived'
@@ -214,6 +226,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     const idsIncheckedItems = new Set(checkedItems.map(item => item.id));
     items = items.filter(item => !idsIncheckedItems.has(item.id));
     items = items.concat(checkedItems);
+    items.sort(GraphChatThreadLastMsgPreviewCreatedComparator);
 
     const handlerNextLink = latestChatThreads['@odata.nextLink'];
 
