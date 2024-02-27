@@ -17,7 +17,7 @@ import { Error } from '../Error/Error';
 import { LoadingMessagesErrorIcon } from '../Error/LoadingMessageErrorIcon';
 import { CreateANewChat } from '../Error/CreateANewChat';
 import { OpenTeamsLinkError } from '../Error/OpenTeams';
-import IChatListActions from '../ChatListHeader/IChatListActions';
+import { IChatListActions } from '../ChatListHeader/IChatListActions';
 
 export interface IChatListProps {
   onSelected: (e: GraphChatThread) => void;
