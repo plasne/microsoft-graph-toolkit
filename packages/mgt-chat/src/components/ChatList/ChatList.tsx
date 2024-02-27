@@ -105,12 +105,12 @@ export const ChatList = ({
   ...props
 }: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
-  const chatListClient = useMemo(() => new StatefulGraphChatListClient(), []);
-  const chatListActions = useMemo(() => {
+  const [chatListClient] = useState<StatefulGraphChatListClient>(() => new StatefulGraphChatListClient());
+  const [chatListActions] = useState<IChatListActions>(() => {
     return {
       markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()
-    } as IChatListActions;
-  }, [chatListClient]);
+    };
+  });
   const [initialLastReadTimeInterval, setInitialLastReadTimeInterval] = useState<number | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
 
