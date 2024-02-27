@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { ChatListItem } from '../ChatListItem/ChatListItem';
 import { MgtTemplateProps, Spinner, log, error } from '@microsoft/mgt-react';
 import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
@@ -105,47 +105,37 @@ export const ChatList = ({
   ...props
 }: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
-
+  const chatListClient = useMemo(() => new StatefulGraphChatListClient(), []);
   const [initialLastReadTimeInterval, setInitialLastReadTimeInterval] = useState<number | undefined>();
-  const [chatListClient, setChatListClient] = useState<StatefulGraphChatListClient | undefined>();
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [chatListActions, setChatListActions] = useState<IChatListActions | undefined>();
 
   useEffect(() => {
-    if (!chatListClient) {
-      const client = new StatefulGraphChatListClient();
-      client.onStateChange(setChatListState);
-      setChatListClient(client);
-    }
+    chatListClient.onStateChange(setChatListState);
+
+    setChatListActions({
+      markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()
+    });
+    return () => {
+      chatListClient.offStateChange(setChatListState);
+    };
   }, [chatListClient]);
 
   useEffect(() => {
-    if (chatListClient) {
-      setChatListActions({
-        markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()
-      });
+    if (chatThreadsPerPage < 1) {
+      error('chatThreadsPerPage must be greater than 0!');
+      return;
     }
-  }, [chatListClient]);
 
-  useEffect(() => {
-    if (chatListClient) {
-      if (chatThreadsPerPage < 1) {
-        error('chatThreadsPerPage must be greater than 0!');
-        return;
-      }
-
-      // todo: implement a upperbound limit for chatThreadsPerPage
-      chatListClient.chatThreadsPerPage = chatThreadsPerPage;
-    }
+    // todo: implement a upperbound limit for chatThreadsPerPage
+    chatListClient.chatThreadsPerPage = chatThreadsPerPage;
   }, [chatListClient, chatThreadsPerPage]);
 
   useEffect(() => {
-    if (chatListClient) {
-      if (!selectedChatId) {
-        chatListClient.clearSelectedChat();
-      } else {
-        chatListClient.setSelectedChatId(selectedChatId);
-      }
+    if (!selectedChatId) {
+      chatListClient.clearSelectedChat();
+    } else {
+      chatListClient.setSelectedChatId(selectedChatId);
     }
   }, [chatListClient, selectedChatId]);
 
@@ -154,31 +144,29 @@ export const ChatList = ({
   // the user could have read messages in another client (for instance, the Teams client).
   useEffect(() => {
     // setup timer only after we have a defined chatListClient
-    if (chatListClient) {
-      if (initialLastReadTimeInterval) {
-        error('lastReadTimeInterval can only be set once.');
-        return;
-      }
-
-      if (lastReadTimeInterval < 1) {
-        error('lastReadTimeInterval must be greater than 0!');
-        return;
-      }
-
-      // todo: implement a upperbound limit for lastReadTimeInterval
-      setInitialLastReadTimeInterval(lastReadTimeInterval);
-
-      const timer = setInterval(() => {
-        chatListClient.cacheLastReadTime('selected');
-      }, lastReadTimeInterval);
-
-      return () => {
-        clearInterval(timer);
-      };
+    if (initialLastReadTimeInterval) {
+      error('lastReadTimeInterval can only be set once.');
+      return;
     }
-  }, [chatListClient, lastReadTimeInterval]); // todo: add doc to indicate why we are not adding deps
 
-  // todo: implement offStateChange on line 199
+    if (lastReadTimeInterval < 1) {
+      error('lastReadTimeInterval must be greater than 0!');
+      return;
+    }
+
+    // todo: implement a upperbound limit for lastReadTimeInterval
+    setInitialLastReadTimeInterval(lastReadTimeInterval);
+
+    const timer = setInterval(() => {
+      chatListClient.cacheLastReadTime('selected');
+    }, lastReadTimeInterval);
+
+    return () => {
+      clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatListClient, lastReadTimeInterval]); // initialLastReadTimeInterval is used to ensure we only set interval once.
+
   useEffect(() => {
     if (!chatListState) {
       return;
@@ -229,16 +217,15 @@ export const ChatList = ({
 
   // this only runs once when the component is unmounted
   useEffect(() => {
-    if (chatListClient) {
-      // tear down
-      return () => {
-        // log state of chatlistclient for debugging purposes
-        log('ChatList unmounted.', chatListClient.getState());
-        chatListClient.offStateChange(setChatListState);
-        chatListClient.tearDown();
-      };
-    }
-  }, []); // todo: add doc to indicate why we are not adding deps
+    // tear down
+    return () => {
+      // log state of chatlistclient for debugging purposes
+      log('ChatList unmounted.', chatListClient.getState());
+      chatListClient.offStateChange(setChatListState);
+      chatListClient.tearDown();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // required for the teardown to only run once
 
   const onClickChatListItem = useCallback(
     (chat: GraphChatThread) => {

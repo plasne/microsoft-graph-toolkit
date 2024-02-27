@@ -1,11 +1,12 @@
 import * as React from 'react';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { shorthands, makeStyles, Dialog, DialogSurface, DialogBody, DialogTitle } from '@fluentui/react-components';
 import { Chat as GraphChat, ChatMessage } from '@microsoft/microsoft-graph-types';
 import { ChatList, Chat, NewChat, ChatListButtonItem, ChatListMenuItem, IChatListActions } from '@microsoft/mgt-chat';
 import { Compose24Filled, Compose24Regular, bundleIcon } from '@fluentui/react-icons';
 import { GraphChatThread } from '../../../../packages/mgt-chat/src/statefulClient/StatefulGraphChatListClient';
+import { Providers, ProviderState } from '@microsoft/mgt-element';
 
 const ChatAddIconBundle = bundleIcon(Compose24Filled, Compose24Regular);
 
@@ -13,6 +14,26 @@ export const ChatAddIcon = (): JSX.Element => {
   const iconColor = 'var(--colorBrandForeground2)';
   return <ChatAddIconBundle color={iconColor} />;
 };
+
+function useIsSignedIn(): [boolean] {
+  const [isSignedIn, setIsSignedIn] = useState(false);
+
+  useEffect(() => {
+    const updateState = () => {
+      const provider = Providers.globalProvider;
+      setIsSignedIn(provider && provider.state === ProviderState.SignedIn);
+    };
+
+    Providers.onProviderUpdated(updateState);
+    updateState();
+
+    return () => {
+      Providers.removeProviderUpdatedListener(updateState);
+    };
+  }, []);
+
+  return [isSignedIn];
+}
 
 const useStyles = makeStyles({
   container: {
@@ -101,7 +122,7 @@ const ChatPage: React.FunctionComponent = () => {
   const styles = useStyles();
   const [chatId, setChatId] = React.useState<string>('');
   const [isNewChatOpen, setIsNewChatOpen] = React.useState(false);
-
+  const [isSignedIn] = useIsSignedIn();
   const onChatSelected = React.useCallback(
     (e: GraphChatThread) => {
       if (chatId !== e.id) {
@@ -143,7 +164,7 @@ const ChatPage: React.FunctionComponent = () => {
           </Dialog>
         </div>
         <div className={styles.side}>
-          <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />
+          {isSignedIn && <ChatListWrapper selectedChatId={chatId} onSelected={onChatSelected} onNewChat={onNewChat} />}
         </div>
         <div className={styles.side}>
           <Chat chatId={chatId} />
