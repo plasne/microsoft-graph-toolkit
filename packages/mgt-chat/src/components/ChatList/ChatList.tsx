@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { ChatListItem } from '../ChatListItem/ChatListItem';
-import { MgtTemplateProps, ProviderState, Providers, Spinner, log, error } from '@microsoft/mgt-react';
+import { MgtTemplateProps, Spinner, log, error } from '@microsoft/mgt-react';
 import { makeStyles, Button, FluentProvider, shorthands, webLightTheme } from '@fluentui/react-components';
 import { FluentThemeProvider } from '@azure/communication-react';
 import { FluentTheme } from '@fluentui/react';
@@ -111,20 +111,12 @@ export const ChatList = ({
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
   const [chatListActions, setChatListActions] = useState<IChatListActions | undefined>();
 
-  // wait for provider to be ready before setting client and state
   useEffect(() => {
-    const provider = Providers.globalProvider;
-    const conditionalLoad = (state: ProviderState | undefined) => {
-      if (!chatListClient) {
-        const client = new StatefulGraphChatListClient();
-        client.onStateChange(setChatListState);
-        setChatListClient(client);
-      }
-    };
-    provider?.onStateChanged(evt => {
-      conditionalLoad(evt.detail);
-    });
-    conditionalLoad(provider?.state);
+    if (!chatListClient) {
+      const client = new StatefulGraphChatListClient();
+      client.onStateChange(setChatListState);
+      setChatListClient(client);
+    }
   }, [chatListClient]);
 
   useEffect(() => {
