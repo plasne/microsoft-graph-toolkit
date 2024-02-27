@@ -45,7 +45,7 @@ function App() {
   // we are using a different state to track the selected chat id fired from chat list.
   const [selectedChatListChatId, setSelectedChatListChatId] = useState<string>('');
 
-  sessionStorage.clear();
+  sessionStorage.removeItem('chatId');
 
   const saveChatAndRefresh = () => {
     if (chatId !== '') {
