@@ -221,7 +221,6 @@ export const ChatList = ({
     return () => {
       // log state of chatlistclient for debugging purposes
       log('ChatList unmounted.', chatListClient.getState());
-      chatListClient.offStateChange(setChatListState);
       chatListClient.tearDown();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
