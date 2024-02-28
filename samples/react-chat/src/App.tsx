@@ -20,7 +20,7 @@ function useIsSignedIn(): [boolean] {
   useEffect(() => {
     const updateState = () => {
       const provider = Providers.globalProvider;
-      setIsSignedIn(provider && provider.state === ProviderState.SignedIn);
+      setIsSignedIn(provider?.state === ProviderState.SignedIn);
     };
 
     Providers.onProviderUpdated(updateState);
