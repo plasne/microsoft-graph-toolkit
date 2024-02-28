@@ -240,7 +240,7 @@ export class GraphNotificationUserClient {
 
   private trySwitchToDisconnected() {
     if (this.wasConnected) {
-      log('The user can no receive notifications from the user subscription.');
+      log('The user can now receive notifications from the user subscription.');
       this.wasConnected = false;
       this.emitter?.disconnected();
     }
