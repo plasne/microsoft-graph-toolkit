@@ -98,10 +98,31 @@ export class GraphNotificationUserClient {
     this.timer.close();
   }
 
+  private cacheToken = '';
   private readonly getToken = async () => {
+    if (this.cacheToken) {
+      return this.cacheToken;
+    }
+
     const token = await Providers.globalProvider.getAccessToken();
     if (!token) throw new Error('Could not retrieve token for user');
-    return token;
+
+    const response = await fetch(`http://localhost:5201/token`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HttpClient error: ${response.statusText}`);
+    }
+
+    this.cacheToken = await response.text();
+
+    return this.cacheToken;
+    // return token;
   };
 
   private readonly receiveNotificationMessage = (message: string) => {
@@ -196,7 +217,7 @@ export class GraphNotificationUserClient {
     const subscriptionDefinition: Subscription = {
       changeType: changeTypes.join(','),
       notificationUrl: `${GraphConfig.webSocketsPrefix}?groupId=${groupId}`,
-      resource: resourcePath,
+      resource: resourcePath + '?model=B',
       expirationDateTime,
       includeResourceData: true,
       clientState: 'wsssecret'
@@ -204,10 +225,33 @@ export class GraphNotificationUserClient {
 
     log('subscribing to changes for ' + resourcePath);
     const subscriptionEndpoint = GraphConfig.subscriptionEndpoint;
+    // const subscription: Subscription = (await this.subscriptionGraph
+    //   .api(subscriptionEndpoint)
+    //   .post(subscriptionDefinition)) as Subscription;
     // send subscription POST to Graph
-    const subscription: Subscription = (await this.subscriptionGraph
-      .api(subscriptionEndpoint)
-      .post(subscriptionDefinition)) as Subscription;
+    // const statictoken =
+    // 'eyJ0eXAiOiJKV1QiLCJub25jZSI6IlkwNkg5N2NwUU90YWdlVTZvc0NTR0RneXljTzZUY2xmUVpFOEljT05nT3MiLCJhbGciOiJSUzI1NiIsIng1dCI6IlhSdmtvOFA3QTNVYVdTblU3Yk05blQwTWpoQSIsImtpZCI6IlhSdmtvOFA3QTNVYVdTblU3Yk05blQwTWpoQSJ9.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTAwMDAtYzAwMC0wMDAwMDAwMDAwMDAiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9iOGZhOTk0My02ZTUwLTRkOWItYTgyMi02NjUzYWM2YTM1NGMvIiwiaWF0IjoxNzA5MjM3OTg3LCJuYmYiOjE3MDkyMzc5ODcsImV4cCI6MTcwOTI0MjU0NiwiYWNjdCI6MCwiYWNyIjoiMSIsImFpbyI6IkFWUUFxLzhXQUFBQTRKdlZRc3lmYUNIeFNNODZTSjc1bEI1TDhSVDZSbENOVFFqZ0ZleUw3VngrSUVWUlZNWHV0OEdPY2pLRjdwR1IwZEJJVE9CVnlscDE0THNSTHlIV3hzeUloZDV4dWVTczMwb2NjdU41WGRBPSIsImFtciI6WyJwd2QiLCJyc2EiLCJtZmEiXSwiYXBwX2Rpc3BsYXluYW1lIjoiTUdUIENIQVQgTVMgR3JhcGggQVBJIiwiYXBwaWQiOiI1ZWYwMWZiMS1mYzAxLTQ5OTktYTkwZS0yNGRlMjFmMmFkMmYiLCJhcHBpZGFjciI6IjEiLCJkZXZpY2VpZCI6ImM3YTcwNTUzLTEyZjEtNDViYy05NWM0LTRjNTlhY2Q1MTgxYyIsImZhbWlseV9uYW1lIjoiQWRtaW4iLCJnaXZlbl9uYW1lIjoiRGxlZSIsImlkdHlwIjoidXNlciIsImlwYWRkciI6IjcwLjExNS45OC4yIiwibmFtZSI6IkRMRUUgTVMgQWRtaW4iLCJvaWQiOiI4YzUyM2E2Ni01ZjFlLTQyMGUtOWRiNi1jNGQ4MmFjZDY2NzAiLCJwbGF0ZiI6IjMiLCJwdWlkIjoiMTAwMzIwMDExODg1MEY2OCIsInJoIjoiMC5BWDBBUTVuNnVGQnVtMDJvSW1aVHJHbzFUQU1BQUFBQUFBQUF3QUFBQUFBQUFBQjlBTjQuIiwic2NwIjoiQm9va21hcmsuUmVhZC5BbGwgQ2FsZW5kYXJzLlJlYWQgQ2hhbm5lbC5SZWFkQmFzaWMuQWxsIENoYXQuQ3JlYXRlIENoYXQuUmVhZCBDaGF0LlJlYWRCYXNpYyBDaGF0LlJlYWRXcml0ZSBDaGF0LlJlYWRXcml0ZS5BbGwgQ2hhdE1lbWJlci5SZWFkV3JpdGUgQ2hhdE1lc3NhZ2UuU2VuZCBDb250YWN0cy5SZWFkIEV4dGVybmFsSXRlbS5SZWFkLkFsbCBGaWxlcy5SZWFkV3JpdGUuQWxsIEdyb3VwLlJlYWRXcml0ZS5BbGwgTWFpbC5SZWFkIE1haWwuUmVhZEJhc2ljIG9wZW5pZCBQZW9wbGUuUmVhZCBQZW9wbGUuUmVhZC5BbGwgUHJlc2VuY2UuUmVhZC5BbGwgcHJvZmlsZSBTaXRlcy5SZWFkLkFsbCBTaXRlcy5SZWFkV3JpdGUuQWxsIFRhc2tzLlJlYWRXcml0ZSBUZWFtLlJlYWRCYXNpYy5BbGwgVGVhbXNBcHBJbnN0YWxsYXRpb24uUmVhZEZvckNoYXQgVGVybVN0b3JlLlJlYWQuQWxsIFVzZXIuUmVhZCBVc2VyLlJlYWQuQWxsIFVzZXIuUmVhZEJhc2ljLkFsbCBlbWFpbCIsInNpZ25pbl9zdGF0ZSI6WyJpbmtub3dubnR3ayIsImttc2kiXSwic3ViIjoiQzlBa0VQTGxjYUN2QTZINklnMWhiMjFZeE9QRlRPSlh4SnNqc3E1bzR2NCIsInRlbmFudF9yZWdpb25fc2NvcGUiOiJOQSIsInRpZCI6ImI4ZmE5OTQzLTZlNTAtNGQ5Yi1hODIyLTY2NTNhYzZhMzU0YyIsInVuaXF1ZV9uYW1lIjoiYWRtaW5AZGxlZW1zLm9ubWljcm9zb2Z0LmNvbSIsInVwbiI6ImFkbWluQGRsZWVtcy5vbm1pY3Jvc29mdC5jb20iLCJ1dGkiOiI2MmNQUXhSdGkwcVlkNkZYd2lCV0FBIiwidmVyIjoiMS4wIiwid2lkcyI6WyI2MmU5MDM5NC02OWY1LTQyMzctOTE5MC0wMTIxNzcxNDVlMTAiLCJiNzlmYmY0ZC0zZWY5LTQ2ODktODE0My03NmIxOTRlODU1MDkiXSwieG1zX2FwcF9iaWxsX2lkIjoiNTdhMDgzMTktNmE5NS00M2QzLThlMzUtMzRhY2I4NDM2YTMzIiwieG1zX2FwcF9iaWxsX3N0YXRlIjoxLCJ4bXNfc3QiOnsic3ViIjoibXByU1BGcFRSSUptZ2tHTmJjR0Nob1QzYUpfNmoyRVlNWmFYV1hLempNdyJ9LCJ4bXNfdGNkdCI6MTYxMzczOTk5NX0.sGfNw0ElV9WpzIt4i7iY4ig0GSxy1FBTz9Vr_l4nth2IU8GdHK8ypL4nYNt1rNzg0nUe6YdqQW_iS9EGoELUB8MZE0KhVs0jVv3RX6QVSOJ3OUF2ALiKmgzZwh3meYVXas1RhR01tQbxzgCtjNvpDml2lQ4r76T-jY-1BV3IaNsMzB9sdhmFlF9c_uWLiFkY8P8HbrmaNZzkt_SzpWC3dFXHfZUytolOhVl6TT1Gb0jmfeqRqAF_l-MTIt_jrPHkk1T7s31vybcUOc7C-zrEPWAmJfiArbk5w5Jpjwi2ZPa8mVrErhMXjl0MBbwdy1ZfOjiH-KJBcZStk76lm3JtNA';
+
+    const token = await this.getToken();
+    const response = await fetch(`https://graph.microsoft.com/beta${subscriptionEndpoint}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(subscriptionDefinition)
+    });
+
+    if (!response.ok) {
+      const wwwAuth = response.headers.get('Www-Authenticate');
+      if (wwwAuth) {
+        const parts = wwwAuth.split(' ')[1].split(',');
+        log(parts);
+      }
+      throw new Error(`HttpClient error: ${response.statusText}`);
+    }
+
+    const subscription = (await response.json()) as Subscription;
     if (!subscription?.notificationUrl) throw new Error('Subscription not created');
     log(subscription);
 
@@ -371,6 +415,8 @@ export class GraphNotificationUserClient {
   };
 
   private async createSignalRConnection(notificationUrl: string) {
+    // const statictoken =
+    // 'eyJ0eXAiOiJKV1QiLCJub25jZSI6IlkwNkg5N2NwUU90YWdlVTZvc0NTR0RneXljTzZUY2xmUVpFOEljT05nT3MiLCJhbGciOiJSUzI1NiIsIng1dCI6IlhSdmtvOFA3QTNVYVdTblU3Yk05blQwTWpoQSIsImtpZCI6IlhSdmtvOFA3QTNVYVdTblU3Yk05blQwTWpoQSJ9.eyJhdWQiOiIwMDAwMDAwMy0wMDAwLTAwMDAtYzAwMC0wMDAwMDAwMDAwMDAiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC9iOGZhOTk0My02ZTUwLTRkOWItYTgyMi02NjUzYWM2YTM1NGMvIiwiaWF0IjoxNzA5MjM3OTg3LCJuYmYiOjE3MDkyMzc5ODcsImV4cCI6MTcwOTI0MjU0NiwiYWNjdCI6MCwiYWNyIjoiMSIsImFpbyI6IkFWUUFxLzhXQUFBQTRKdlZRc3lmYUNIeFNNODZTSjc1bEI1TDhSVDZSbENOVFFqZ0ZleUw3VngrSUVWUlZNWHV0OEdPY2pLRjdwR1IwZEJJVE9CVnlscDE0THNSTHlIV3hzeUloZDV4dWVTczMwb2NjdU41WGRBPSIsImFtciI6WyJwd2QiLCJyc2EiLCJtZmEiXSwiYXBwX2Rpc3BsYXluYW1lIjoiTUdUIENIQVQgTVMgR3JhcGggQVBJIiwiYXBwaWQiOiI1ZWYwMWZiMS1mYzAxLTQ5OTktYTkwZS0yNGRlMjFmMmFkMmYiLCJhcHBpZGFjciI6IjEiLCJkZXZpY2VpZCI6ImM3YTcwNTUzLTEyZjEtNDViYy05NWM0LTRjNTlhY2Q1MTgxYyIsImZhbWlseV9uYW1lIjoiQWRtaW4iLCJnaXZlbl9uYW1lIjoiRGxlZSIsImlkdHlwIjoidXNlciIsImlwYWRkciI6IjcwLjExNS45OC4yIiwibmFtZSI6IkRMRUUgTVMgQWRtaW4iLCJvaWQiOiI4YzUyM2E2Ni01ZjFlLTQyMGUtOWRiNi1jNGQ4MmFjZDY2NzAiLCJwbGF0ZiI6IjMiLCJwdWlkIjoiMTAwMzIwMDExODg1MEY2OCIsInJoIjoiMC5BWDBBUTVuNnVGQnVtMDJvSW1aVHJHbzFUQU1BQUFBQUFBQUF3QUFBQUFBQUFBQjlBTjQuIiwic2NwIjoiQm9va21hcmsuUmVhZC5BbGwgQ2FsZW5kYXJzLlJlYWQgQ2hhbm5lbC5SZWFkQmFzaWMuQWxsIENoYXQuQ3JlYXRlIENoYXQuUmVhZCBDaGF0LlJlYWRCYXNpYyBDaGF0LlJlYWRXcml0ZSBDaGF0LlJlYWRXcml0ZS5BbGwgQ2hhdE1lbWJlci5SZWFkV3JpdGUgQ2hhdE1lc3NhZ2UuU2VuZCBDb250YWN0cy5SZWFkIEV4dGVybmFsSXRlbS5SZWFkLkFsbCBGaWxlcy5SZWFkV3JpdGUuQWxsIEdyb3VwLlJlYWRXcml0ZS5BbGwgTWFpbC5SZWFkIE1haWwuUmVhZEJhc2ljIG9wZW5pZCBQZW9wbGUuUmVhZCBQZW9wbGUuUmVhZC5BbGwgUHJlc2VuY2UuUmVhZC5BbGwgcHJvZmlsZSBTaXRlcy5SZWFkLkFsbCBTaXRlcy5SZWFkV3JpdGUuQWxsIFRhc2tzLlJlYWRXcml0ZSBUZWFtLlJlYWRCYXNpYy5BbGwgVGVhbXNBcHBJbnN0YWxsYXRpb24uUmVhZEZvckNoYXQgVGVybVN0b3JlLlJlYWQuQWxsIFVzZXIuUmVhZCBVc2VyLlJlYWQuQWxsIFVzZXIuUmVhZEJhc2ljLkFsbCBlbWFpbCIsInNpZ25pbl9zdGF0ZSI6WyJpbmtub3dubnR3ayIsImttc2kiXSwic3ViIjoiQzlBa0VQTGxjYUN2QTZINklnMWhiMjFZeE9QRlRPSlh4SnNqc3E1bzR2NCIsInRlbmFudF9yZWdpb25fc2NvcGUiOiJOQSIsInRpZCI6ImI4ZmE5OTQzLTZlNTAtNGQ5Yi1hODIyLTY2NTNhYzZhMzU0YyIsInVuaXF1ZV9uYW1lIjoiYWRtaW5AZGxlZW1zLm9ubWljcm9zb2Z0LmNvbSIsInVwbiI6ImFkbWluQGRsZWVtcy5vbm1pY3Jvc29mdC5jb20iLCJ1dGkiOiI2MmNQUXhSdGkwcVlkNkZYd2lCV0FBIiwidmVyIjoiMS4wIiwid2lkcyI6WyI2MmU5MDM5NC02OWY1LTQyMzctOTE5MC0wMTIxNzcxNDVlMTAiLCJiNzlmYmY0ZC0zZWY5LTQ2ODktODE0My03NmIxOTRlODU1MDkiXSwieG1zX2FwcF9iaWxsX2lkIjoiNTdhMDgzMTktNmE5NS00M2QzLThlMzUtMzRhY2I4NDM2YTMzIiwieG1zX2FwcF9iaWxsX3N0YXRlIjoxLCJ4bXNfc3QiOnsic3ViIjoibXByU1BGcFRSSUptZ2tHTmJjR0Nob1QzYUpfNmoyRVlNWmFYV1hLempNdyJ9LCJ4bXNfdGNkdCI6MTYxMzczOTk5NX0.sGfNw0ElV9WpzIt4i7iY4ig0GSxy1FBTz9Vr_l4nth2IU8GdHK8ypL4nYNt1rNzg0nUe6YdqQW_iS9EGoELUB8MZE0KhVs0jVv3RX6QVSOJ3OUF2ALiKmgzZwh3meYVXas1RhR01tQbxzgCtjNvpDml2lQ4r76T-jY-1BV3IaNsMzB9sdhmFlF9c_uWLiFkY8P8HbrmaNZzkt_SzpWC3dFXHfZUytolOhVl6TT1Gb0jmfeqRqAF_l-MTIt_jrPHkk1T7s31vybcUOc7C-zrEPWAmJfiArbk5w5Jpjwi2ZPa8mVrErhMXjl0MBbwdy1ZfOjiH-KJBcZStk76lm3JtNA';
     const connectionOptions: IHttpConnectionOptions = {
       accessTokenFactory: this.getToken,
       withCredentials: false

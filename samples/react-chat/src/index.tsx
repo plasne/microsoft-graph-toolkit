@@ -13,8 +13,8 @@ brokerSettings.renewalTimerInterval = 15;
 
 Providers.globalProvider = new Msal2Provider({
   baseURL: GraphConfig.graphEndpoint,
-  clientId: 'ed072e38-e76e-45ae-ab76-073cb95495bb',
-  scopes: allChatListScopes
+  clientId: '74757b85-35be-4fa9-9c12-c7d4b234a3b4',
+  scopes: ['api://5ef01fb1-fc01-4999-a90e-24de21f2ad2f/.default']
 });
 
 ReactDOM.render(<App />, document.getElementById('root'));
