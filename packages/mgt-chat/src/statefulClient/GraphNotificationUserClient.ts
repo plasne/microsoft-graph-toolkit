@@ -24,6 +24,7 @@ import type {
 import { GraphConfig } from './GraphConfig';
 import { SubscriptionsCache, ComponentType } from './Caching/SubscriptionCache';
 import { Timer } from '../utils/Timer';
+import { addMeteredApiSegment } from '../utils/addMeteredApiSegment';
 import { getOrGenerateGroupId } from './getOrGenerateGroupId';
 import { v4 as uuid } from 'uuid';
 
@@ -83,6 +84,7 @@ export class GraphNotificationUserClient {
    *
    */
   constructor(
+    private readonly useMeteredApis: boolean,
     private readonly emitter: ThreadEventEmitter,
     private readonly _graph: IGraph
   ) {}
@@ -186,7 +188,7 @@ export class GraphNotificationUserClient {
   private async createSubscription(userId: string): Promise<Subscription> {
     const groupId = getOrGenerateGroupId(userId);
     log('Creating a new subscription with group Id:', groupId);
-    const resourcePath = `/users/${userId}/chats/getAllmessages`;
+    const resourcePath = addMeteredApiSegment(this.useMeteredApis, `/users/${userId}/chats/getAllmessages`);
     const changeTypes: ChangeTypes[] = ['created', 'updated', 'deleted'];
 
     // build subscription request

@@ -153,6 +153,7 @@ function App() {
         <div className="chatlist-pane">
           {isSignedIn && (
             <ChatList
+              usePremiumApis={false}
               selectedChatId={chatId}
               onLoaded={onLoaded}
               chatThreadsPerPage={chatThreadsPerPage}

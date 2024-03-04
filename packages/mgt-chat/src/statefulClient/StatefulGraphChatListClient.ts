@@ -189,7 +189,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private _loadPromise: Promise<void> | undefined;
   private _loadMorePromise: Promise<void> | undefined;
 
-  constructor() {
+  constructor(useMeteredApis: boolean) {
     this.userId = currentUserId();
     Providers.globalProvider.onActiveAccountChanged(this.onActiveAccountChanged);
     this._eventEmitter = new ThreadEventEmitter();
@@ -197,7 +197,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
     this._cache = new LastReadCache();
     this._graph = graph('mgt-chat', GraphConfig.version);
 
-    this._notificationClient = new GraphNotificationUserClient(this._eventEmitter, this._graph);
+    this._notificationClient = new GraphNotificationUserClient(useMeteredApis, this._eventEmitter, this._graph);
 
     this.updateUserSubscription(this.userId);
   }

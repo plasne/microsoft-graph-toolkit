@@ -30,6 +30,7 @@ export interface IChatListProps {
   selectedChatId?: string;
   onMessageReceived?: (msg: ChatMessage) => void;
   onConnectionChanged?: (connected: boolean) => void;
+  usePremiumApis?: boolean;
 }
 
 const useStyles = makeStyles({
@@ -93,6 +94,7 @@ const useStyles = makeStyles({
 
 // this is a stub to move the logic here that should end up here.
 export const ChatList = ({
+  usePremiumApis = true,
   lastReadTimeInterval = 30000, // default to 30 seconds
   selectedChatId,
   onMessageReceived,
@@ -105,7 +107,7 @@ export const ChatList = ({
   ...props
 }: MgtTemplateProps & IChatListProps & IChatListMenuItemsProps) => {
   const styles = useStyles();
-  const [chatListClient] = useState<StatefulGraphChatListClient>(() => new StatefulGraphChatListClient());
+  const [chatListClient] = useState<StatefulGraphChatListClient>(() => new StatefulGraphChatListClient(usePremiumApis));
   const [chatListActions] = useState<IChatListActions>(() => {
     return {
       markAllChatThreadsAsRead: () => chatListClient.markAllChatThreadsAsRead()

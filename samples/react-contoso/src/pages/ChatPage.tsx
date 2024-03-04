@@ -84,6 +84,7 @@ const ChatListWrapper = memo(({ onSelected, onNewChat, selectedChatId }: ChatLis
 
   return (
     <ChatList
+      usePremiumApis={false}
       selectedChatId={selectedChatId}
       onLoaded={onLoaded}
       chatThreadsPerPage={10}
