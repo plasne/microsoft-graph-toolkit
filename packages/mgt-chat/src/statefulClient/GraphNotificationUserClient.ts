@@ -98,32 +98,32 @@ export class GraphNotificationUserClient {
     this.timer.close();
   }
 
-  // private cacheToken = '';
-  // private readonly getToken = async () => {
-  //   if (this.cacheToken) {
-  //     return this.cacheToken;
-  //   }
+  private cacheToken = '';
+  private readonly getToken = async () => {
+    if (this.cacheToken) {
+      return this.cacheToken;
+    }
 
-  //   const token = await Providers.globalProvider.getAccessToken();
-  //   if (!token) throw new Error('Could not retrieve token for user');
+    const token = await Providers.globalProvider.getAccessTokenForScopes('api://5ef01fb1-fc01-4999-a90e-24de21f2ad2f/access_as_user');
+    if (!token) throw new Error('Could not retrieve token for user');
 
-  //   const response = await fetch(`http://localhost:5201/token`, {
-  //     method: 'GET',
-  //     headers: {
-  //       Authorization: `Bearer ${token}`,
-  //       'Content-Type': 'application/json'
-  //     }
-  //   });
+    const response = await fetch(`http://localhost:5201/token`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-  //   if (!response.ok) {
-  //     throw new Error(`HttpClient error: ${response.statusText}`);
-  //   }
+    if (!response.ok) {
+      throw new Error(`HttpClient error: ${response.statusText}`);
+    }
 
-  //   this.cacheToken = await response.text();
+    this.cacheToken = await response.text();
 
-  //   return this.cacheToken;
-  //   // return token;
-  // };
+    return this.cacheToken;
+    // return token;
+  };
 
   private readonly receiveNotificationMessage = (message: string) => {
     if (typeof message !== 'string') throw new Error('Expected string from receivenotificationmessageasync');
@@ -224,35 +224,14 @@ export class GraphNotificationUserClient {
     };
 
     log('subscribing to changes for ' + resourcePath);
-    // const subscriptionEndpoint = GraphConfig.subscriptionEndpoint;
+    const subscriptionEndpoint = GraphConfig.subscriptionEndpoint;
     // const subscription: Subscription = (await this.subscriptionGraph
     //   .api(subscriptionEndpoint)
     //   .post(subscriptionDefinition)) as Subscription;
     // send subscription POST to Graph
 
-    // const token = await this.getToken();
-    // const response = await fetch(`https://graph.microsoft.com/beta${subscriptionEndpoint}`, {
-    //   method: 'POST',
-    //   headers: {
-    //     Authorization: `Bearer ${token}`,
-    //     'Content-Type': 'application/json'
-    //   },
-    //   body: JSON.stringify(subscriptionDefinition)
-    // });
-
-    // if (!response.ok) {
-    //   const wwwAuth = response.headers.get('Www-Authenticate');
-    //   if (wwwAuth) {
-    //     const parts = wwwAuth.split(' ')[1].split(',');
-    //     log(parts);
-    //   }
-    //   throw new Error(`HttpClient error: ${response.statusText}`);
-    // }
-
-    const token = await Providers.globalProvider.getAccessTokenForScopes(
-      'api://5ef01fb1-fc01-4999-a90e-24de21f2ad2f/access_as_user'
-    );
-    const response = await fetch(`http://localhost:5201/subscriptions`, {
+    const token = await this.getToken();
+    const response = await fetch(`https://graph.microsoft.com/beta${subscriptionEndpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -262,8 +241,29 @@ export class GraphNotificationUserClient {
     });
 
     if (!response.ok) {
+      const wwwAuth = response.headers.get('Www-Authenticate');
+      if (wwwAuth) {
+        const parts = wwwAuth.split(' ')[1].split(',');
+        log(parts);
+      }
       throw new Error(`HttpClient error: ${response.statusText}`);
     }
+
+    // const token = await Providers.globalProvider.getAccessTokenForScopes(
+    //   'api://5ef01fb1-fc01-4999-a90e-24de21f2ad2f/access_as_user'
+    // );
+    // const response = await fetch(`http://localhost:5201/subscriptions`, {
+    //   method: 'POST',
+    //   headers: {
+    //     Authorization: `Bearer ${token}`,
+    //     'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify(subscriptionDefinition)
+    // });
+
+    // if (!response.ok) {
+    //   throw new Error(`HttpClient error: ${response.statusText}`);
+    // }
 
     const subscription = (await response.json()) as Subscription;
     if (!subscription?.notificationUrl) throw new Error('Subscription not created');
@@ -428,11 +428,11 @@ export class GraphNotificationUserClient {
     return this.cacheSubscription(userId, renewedSubscription);
   };
 
-  private readonly getToken = async () => {
-    const token = await Providers.globalProvider.getAccessToken();
-    if (!token) throw new Error('Could not retrieve token for user');
-    return token;
-  };
+  // private readonly getToken = async () => {
+  //   const token = await Providers.globalProvider.getAccessToken();
+  //   if (!token) throw new Error('Could not retrieve token for user');
+  //   return token;
+  // };
 
   private async createSignalRConnection(notificationUrl: string) {
     const connectionOptions: IHttpConnectionOptions = {
