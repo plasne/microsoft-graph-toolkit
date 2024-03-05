@@ -55,6 +55,14 @@ const isMessageNotification = (o: Notification<Entity>): o is Notification<ChatM
 const isMembershipNotification = (o: Notification<Entity>): o is Notification<AadUserConversationMember> =>
   o.resource.includes('/members');
 
+interface ConnectionData {
+  subscription: Subscription | undefined;
+  sessionId: string | undefined;
+  webSocketUrl: string | undefined;
+  webSocketAccessToken: string | undefined;
+  negotiateVersion: number | undefined;
+}
+
 export class GraphNotificationUserClient {
   private readonly instanceId = uuid();
   private connection?: HubConnection = undefined;
@@ -204,7 +212,7 @@ export class GraphNotificationUserClient {
     await this.subscriptionCache.cacheSubscription(userId, ComponentType.User, subscriptionRecord);
   };
 
-  private async createSubscription(userId: string): Promise<Subscription> {
+  private async createSubscription(userId: string): Promise<ConnectionData> {
     const groupId = getOrGenerateGroupId(userId);
     log('Creating a new subscription with group Id:', groupId);
     const resourcePath = `/users/${userId}/chats/getAllmessages`;
@@ -265,16 +273,20 @@ export class GraphNotificationUserClient {
       throw new Error(`HttpClient error: ${response.statusText}`);
     }
 
-    const subscription = (await response.json()) as Subscription;
-    if (!subscription?.notificationUrl) throw new Error('Subscription not created');
-    log(subscription);
+    const connectionData = (await response.json()) as ConnectionData;
+    // if (!subscription?.notificationUrl) throw new Error('Subscription not created');
+    // log(subscription);
 
-    this.subscriptionId = subscription.id!;
-    await this.cacheSubscription(userId, subscription);
+    if (!connectionData.subscription) {
+      throw new Error('Subscription not created');
+    }
+
+    this.subscriptionId = connectionData.subscription.id!;
+    await this.cacheSubscription(userId, connectionData.subscription);
 
     log('Subscription created.');
 
-    return subscription;
+    return connectionData;
   }
 
   private async deleteCachedSubscriptions(userId: string) {
@@ -307,6 +319,8 @@ export class GraphNotificationUserClient {
   private readonly renewalSync = () => {
     void this.renewal();
   };
+
+  private connectionData: ConnectionData | undefined;
 
   private readonly renewal = async () => {
     let nextRenewalTimeInSec = appSettings.renewalTimerInterval;
@@ -341,7 +355,8 @@ export class GraphNotificationUserClient {
       if (!subscription) {
         try {
           this.trySwitchToDisconnected();
-          subscription = await this.createSubscription(currentUserId);
+          this.connectionData = await this.createSubscription(currentUserId);
+          subscription = this.connectionData.subscription;
         } catch (e) {
           const err = e as { statusCode?: number; message: string };
           if (err.statusCode === 403 && err.message.indexOf('has reached its limit') > 0) {
@@ -363,6 +378,10 @@ export class GraphNotificationUserClient {
         }
       }
 
+      if (!subscription || !this.connectionData) {
+        throw new Error('Subscription not created');
+      }
+
       // create or reconnect the SignalR connection
       // notificationUrl comes in the form of websockets:https://graph.microsoft.com/beta/subscriptions/notificationChannel/websockets/<Id>?groupid=<UserId>&sessionid=default
       // if <Id> changes, we need to create a new connection
@@ -373,7 +392,7 @@ export class GraphNotificationUserClient {
         log(`Creating a new SignalR connection for subscription ${subscription.id!}...`);
         this.trySwitchToDisconnected();
         this.lastNotificationUrl = subscription.notificationUrl!;
-        await this.createSignalRConnection(subscription.notificationUrl!);
+        await this.createSignalRConnection();
         log(`Successfully created a new SignalR connection for subscription ${subscription.id!}.`);
       } else if (this.connection.state !== HubConnectionState.Connected) {
         log(`Reconnecting SignalR connection for subscription ${subscription.id!}...`);
@@ -385,7 +404,7 @@ export class GraphNotificationUserClient {
         this.trySwitchToDisconnected();
         await this.closeSignalRConnection();
         this.lastNotificationUrl = subscription.notificationUrl!;
-        await this.createSignalRConnection(subscription.notificationUrl!);
+        await this.createSignalRConnection();
         log(`Successfully updated SignalR connection for subscription ${subscription.id!}.`);
       }
 
@@ -434,14 +453,26 @@ export class GraphNotificationUserClient {
     return token;
   };
 
-  private async createSignalRConnection(notificationUrl: string) {
+  private async createSignalRConnection() {
+    if (!this.connectionData) {
+      throw new Error('Connection data not found');
+    }
+
     const connectionOptions: IHttpConnectionOptions = {
-      accessTokenFactory: this.getToken,
+      accessTokenFactory: () => {
+        if (!this.connectionData) {
+          throw new Error('Connection data not found');
+        }
+        return this.connectionData.webSocketAccessToken!;
+      },
       withCredentials: false
     };
 
     const connection = new HubConnectionBuilder()
-      .withUrl(GraphConfig.adjustNotificationUrl(notificationUrl, this.getSessionId()), connectionOptions)
+      .withUrl(
+        GraphConfig.adjustNotificationUrl(this.connectionData.webSocketUrl!, this.connectionData.sessionId),
+        connectionOptions
+      )
       .configureLogging(LogLevel.Information)
       .build();
 
