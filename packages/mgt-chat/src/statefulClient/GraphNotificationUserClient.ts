@@ -352,7 +352,7 @@ export class GraphNotificationUserClient {
       }
 
       // if there is no subscription, try to create one
-      if (!subscription) {
+      if (!subscription || !this.connectionData) {
         try {
           this.trySwitchToDisconnected();
           this.connectionData = await this.createSubscription(currentUserId);
@@ -427,9 +427,9 @@ export class GraphNotificationUserClient {
   }
 
   // this is used to create a unique session id for the web socket connection
-  private getSessionId(): string {
-    return uuid();
-  }
+  // private getSessionId(): string {
+  //   return uuid();
+  // }
 
   private readonly renewSubscription = async (userId: string, subscription: Subscription): Promise<void> => {
     this.renewalCount++;
@@ -439,19 +439,34 @@ export class GraphNotificationUserClient {
       new Date().getTime() + appSettings.defaultSubscriptionLifetimeInMinutes * 60 * 1000
     );
     // PATCH /subscriptions/{id}
-    const subscriptionId = subscription.id;
-    const expirationDateTime = newExpirationTime.toISOString();
-    const renewedSubscription = (await this.graph.api(`${GraphConfig.subscriptionEndpoint}/${subscriptionId}`).patch({
-      expirationDateTime
-    })) as Subscription;
+    // const subscriptionId = subscription.id;
+    // const expirationDateTime = newExpirationTime.toISOString();
+    // const renewedSubscription = (await this.graph.api(`${GraphConfig.subscriptionEndpoint}/${subscriptionId}`).patch({
+    //   expirationDateTime
+    // })) as Subscription;
+
+    const token = await Providers.globalProvider.getAccessTokenForScopes(
+      'api://5ef01fb1-fc01-4999-a90e-24de21f2ad2f/access_as_user'
+    );
+    const response = await fetch(`http://localhost:5201/subscriptions/${subscription.id}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        expirationDateTime: newExpirationTime
+      })
+    });
+    const renewedSubscription = (await response.json()) as Subscription;
     return this.cacheSubscription(userId, renewedSubscription);
   };
 
-  private readonly getToken = async () => {
-    const token = await Providers.globalProvider.getAccessToken();
-    if (!token) throw new Error('Could not retrieve token for user');
-    return token;
-  };
+  // private readonly getToken = async () => {
+  //   const token = await Providers.globalProvider.getAccessToken();
+  //   if (!token) throw new Error('Could not retrieve token for user');
+  //   return token;
+  // };
 
   private async createSignalRConnection() {
     if (!this.connectionData) {
