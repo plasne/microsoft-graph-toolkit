@@ -35,7 +35,6 @@ export const DefaultProfileIcon = ({ chat, userId }: IDefaultProfileIconProps & 
           showPresence={true}
           personCardInteraction="hover"
         >
-          <ChatListItemIcon chatType="oneOnOne" template="no-data" />
         </Person>
       )}
       {chat.chatType === 'group' && <ChatListItemIcon chatType="group" />}
