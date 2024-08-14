@@ -184,7 +184,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   private readonly _eventEmitter: ThreadEventEmitter;
   private readonly _cache: LastReadCache;
   private readonly _graph: IGraph;
-  private _stateSubscribers: ((state: GraphChatListClient) => void)[] = [];
+  private readonly _stateSubscribers: ((state: GraphChatListClient) => void)[] = [];
   private _initialSelectedChatId: string | undefined;
   private _loadPromise: Promise<void> | undefined;
   private _loadMorePromise: Promise<void> | undefined;
@@ -521,7 +521,7 @@ class StatefulGraphChatListClient implements StatefulClient<GraphChatListClient>
   public offStateChange(handler: (state: GraphChatListClient) => void): void {
     const index = this._stateSubscribers.indexOf(handler);
     if (index !== -1) {
-      this._stateSubscribers = this._stateSubscribers.splice(index, 1);
+      this._stateSubscribers.splice(index, 1);
     }
   }
 

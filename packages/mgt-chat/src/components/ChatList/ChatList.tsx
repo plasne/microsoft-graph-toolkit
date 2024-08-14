@@ -115,11 +115,62 @@ export const ChatList = ({
   const [chatListState, setChatListState] = useState<GraphChatListClient | undefined>();
 
   useEffect(() => {
-    chatListClient.onStateChange(setChatListState);
-    return () => {
-      chatListClient.offStateChange(setChatListState);
+    const handleStateChange = (newState: GraphChatListClient | undefined) => {
+      if (!newState) {
+        return;
+      }
+
+      setChatListState(newState);
+
+      // handle state changes
+      if (newState.status === 'chat message received' && onMessageReceived && newState.chatMessage) {
+        onMessageReceived(newState.chatMessage);
+      }
+
+      if (newState.status === 'chat selected' && onSelected && newState.internalSelectedChat) {
+        onSelected(newState.internalSelectedChat);
+      }
+
+      if (newState.status === 'chat unselected' && onUnselected && newState.internalPrevSelectedChat) {
+        onUnselected(newState.internalPrevSelectedChat);
+      }
+
+      if (newState.status === 'chats read' && onAllMessagesRead && newState.chatThreads) {
+        onAllMessagesRead(newState.chatThreads.map(c => c.id!));
+      }
+
+      if (newState.status === 'chats loaded' && onLoaded) {
+        onLoaded(newState?.chatThreads ?? []);
+      }
+
+      if (
+        newState.status === 'chats loaded' &&
+        newState.fireOnSelected &&
+        onSelected &&
+        newState.internalSelectedChat
+      ) {
+        onSelected(newState.internalSelectedChat);
+      }
+
+      if (newState.status === 'no chats' && onLoaded) {
+        onLoaded([]);
+      }
+
+      if (newState.status === 'server connection established' && onConnectionChanged) {
+        onConnectionChanged(true);
+        void chatListClient.tryLoadChatThreads().catch(e => chatListClient.raiseFatalError(e as Error));
+      }
+
+      if (newState.status === 'server connection lost' && onConnectionChanged) {
+        onConnectionChanged(false);
+      }
     };
-  }, [chatListClient]);
+
+    chatListClient.onStateChange(handleStateChange);
+    return () => {
+      chatListClient.offStateChange(handleStateChange);
+    };
+  }, [chatListClient, onLoaded, onMessageReceived, onSelected, onUnselected, onAllMessagesRead, onConnectionChanged]);
 
   useEffect(() => {
     if (chatThreadsPerPage < 1) {
@@ -166,64 +217,6 @@ export const ChatList = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatListClient, lastReadTimeInterval]); // initialLastReadTimeInterval is used to ensure we only set interval once.
-
-  useEffect(() => {
-    if (!chatListState) {
-      return;
-    }
-
-    // handle state changes
-    if (chatListState.status === 'chat message received' && onMessageReceived && chatListState.chatMessage) {
-      onMessageReceived(chatListState.chatMessage);
-    }
-
-    if (chatListState.status === 'chat selected' && onSelected && chatListState.internalSelectedChat) {
-      onSelected(chatListState.internalSelectedChat);
-    }
-
-    if (chatListState.status === 'chat unselected' && onUnselected && chatListState.internalPrevSelectedChat) {
-      onUnselected(chatListState.internalPrevSelectedChat);
-    }
-
-    if (chatListState.status === 'chats read' && onAllMessagesRead && chatListState.chatThreads) {
-      onAllMessagesRead(chatListState.chatThreads.map(c => c.id!));
-    }
-
-    if (chatListState.status === 'chats loaded' && onLoaded) {
-      onLoaded(chatListState?.chatThreads ?? []);
-    }
-
-    if (
-      chatListState.status === 'chats loaded' &&
-      chatListState.fireOnSelected &&
-      onSelected &&
-      chatListState.internalSelectedChat
-    ) {
-      onSelected(chatListState.internalSelectedChat);
-    }
-
-    if (chatListState.status === 'no chats' && onLoaded) {
-      onLoaded([]);
-    }
-
-    if (chatListState.status === 'server connection established' && onConnectionChanged) {
-      onConnectionChanged(true);
-      void chatListClient.tryLoadChatThreads().catch(e => chatListClient.raiseFatalError(e as Error));
-    }
-
-    if (chatListState.status === 'server connection lost' && onConnectionChanged) {
-      onConnectionChanged(false);
-    }
-  }, [
-    chatListClient,
-    chatListState,
-    onLoaded,
-    onMessageReceived,
-    onSelected,
-    onUnselected,
-    onAllMessagesRead,
-    onConnectionChanged
-  ]);
 
   // this only runs once when the component is unmounted
   useEffect(() => {
