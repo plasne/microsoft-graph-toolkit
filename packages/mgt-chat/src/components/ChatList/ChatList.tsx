@@ -116,11 +116,11 @@ export const ChatList = ({
 
   useEffect(() => {
     const handleStateChange = (newState: GraphChatListClient | undefined) => {
+      setChatListState(newState);
+
       if (!newState) {
         return;
       }
-
-      setChatListState(newState);
 
       // handle state changes
       if (newState.status === 'chat message received' && onMessageReceived && newState.chatMessage) {
