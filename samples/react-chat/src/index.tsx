@@ -5,8 +5,7 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { Providers } from '@microsoft/mgt-react';
 import { Msal2Provider } from '@microsoft/mgt-msal2-provider';
-import { allChatListScopes, brokerSettings, GraphConfig } from '@microsoft/mgt-chat';
-import config from './config'; // import the config file
+import { allChatScopes, brokerSettings, GraphConfig } from '@microsoft/mgt-chat';
 
 brokerSettings.defaultSubscriptionLifetimeInMinutes = 7;
 brokerSettings.renewalThreshold = 65;
@@ -14,11 +13,8 @@ brokerSettings.renewalTimerInterval = 15;
 
 Providers.globalProvider = new Msal2Provider({
   baseURL: GraphConfig.graphEndpoint,
-  clientId: config.clientId,
-  scopes: allChatListScopes,
-  isWebProxyEnabled: config.isWebProxyEnabled,
-  webProxyURL: config.webProxyURL,
-  webProxyAPIScope: config.webProxyAPIScope
+  clientId: '9a966610-14ec-44fb-b654-82db06f77da3',
+  scopes: allChatScopes
 });
 
 ReactDOM.render(<App />, document.getElementById('root'));

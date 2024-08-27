@@ -142,33 +142,6 @@ export abstract class IProvider implements AuthenticationProvider {
   }
 
   /**
-   * get/set the value for WebProxyEnabled
-   *
-   * @protected
-   * @type {boolean}
-   * @memberof IProvider
-   */
-  public isWebProxyEnabled = false;
-
-  /**
-   * get/set the value for webProxyURL
-   *
-   * @protected
-   * @memberof IProvider
-   * @type {string}
-   */
-  public webProxyURL = '';
-
-  /**
-   * get/set the value for webProxyAPIScope
-   *
-   * @protected
-   * @memberof IProvider
-   * @type {string}
-   */
-  public webProxyAPIScope = '';
-
-  /**
    * returns state of Provider
    *
    * @readonly

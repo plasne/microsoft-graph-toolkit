@@ -5,11 +5,11 @@
  * -------------------------------------------------------------------------------------------
  */
 
-import { allChatScopes, allChatListScopes } from './statefulClient/chatOperationScopes';
+import { allChatScopes } from './statefulClient/chatOperationScopes';
 
 import { appSettings } from './statefulClient/GraphNotificationClient';
 
 export * from './components';
 export * from './utils/createNewChat';
 export * from './statefulClient/GraphConfig';
-export { allChatScopes, allChatListScopes, appSettings as brokerSettings };
+export { allChatScopes, appSettings as brokerSettings };

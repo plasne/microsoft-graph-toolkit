@@ -159,24 +159,6 @@ export interface Msal2Config extends Msal2ConfigBase {
    * @memberof Msal2Config
    */
   customHosts?: string[];
-
-  /**
-   * enable Web Proxy functionality
-   *
-   * @type {boolean}
-   * @memberof Msal2Config
-   */
-  isWebProxyEnabled?: boolean;
-
-  /**
-   * The Web Proxy URL for the graph client
-   */
-  webProxyURL?: string;
-
-  /**
-   * The Web Proxy API Scope for the graph client
-   */
-  webProxyAPIScope?: string;
 }
 
 /**
@@ -428,10 +410,6 @@ export class Msal2Provider extends IProvider {
       typeof msal2config.isMultiAccountEnabled !== 'undefined' ? msal2config.isMultiAccountEnabled : true;
     this.baseURL = typeof msal2config.baseURL !== 'undefined' ? msal2config.baseURL : this.baseURL;
     this.customHosts = msal2config.customHosts;
-    this.isWebProxyEnabled =
-      typeof msal2config.isWebProxyEnabled !== 'undefined' ? msal2config.isWebProxyEnabled : false;
-    this.webProxyURL = typeof msal2config.webProxyURL !== 'undefined' ? msal2config.webProxyURL : '';
-    this.webProxyAPIScope = typeof msal2config.webProxyAPIScope !== 'undefined' ? msal2config.webProxyAPIScope : '';
 
     this.graph = createFromProvider(this);
     try {
