@@ -26,10 +26,9 @@ export const schemas: Record<CacheNames, CacheSchema> = {
     name: 'conversation',
     stores: {
       chats: 'chats',
-      subscriptions: 'subscriptions',
-      lastRead: 'lastRead'
+      subscriptions: 'subscriptions'
     },
-    version: 3,
+    version: 2,
     indexes: {
       subscriptions: [{ name: 'lastAccessDateTime', field: 'lastAccessDateTime' }]
     }
